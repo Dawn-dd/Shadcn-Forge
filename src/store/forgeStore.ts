@@ -40,12 +40,12 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
   isDarkMode: true,
   theme: {
     ...THEME_PRESETS.Default,
-    background: '#09090b',
-    foreground: '#f8fafc',
+    background: '#ffffff',
+    foreground: '#0f172a',
     primaryForeground: '#ffffff',
     mutedForeground: '#64748b',
-    border: '#27272a',
-    muted: '#18181b',
+    border: '#e2e8f0',
+    muted: '#f1f5f9',
     radius: 8,
     borderWidth: 1
   },
@@ -55,8 +55,8 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
     direction: 'column',
     align: 'center',
     backdrop: 'dots', 
-    appBg: '#0c0a09',
-    workspaceBg: '#050505',
+    appBg: '#ffffff',
+    workspaceBg: '#f1f5f9',
     radius: 16,
     borderWidth: 1
   },
@@ -307,12 +307,12 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
     set({
       theme: {
         ...THEME_PRESETS.Default,
-        background: '#09090b',
-        foreground: '#f8fafc',
+        background: '#ffffff',
+        foreground: '#0f172a',
         primaryForeground: '#ffffff',
         mutedForeground: '#64748b',
-        border: '#27272a',
-        muted: '#18181b',
+        border: '#e2e8f0',
+        muted: '#f1f5f9',
         radius: 8,
         borderWidth: 1
       },
@@ -322,8 +322,8 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
         direction: 'column',
         align: 'center',
         backdrop: 'dots',
-        appBg: '#0c0a09',
-        workspaceBg: '#050505',
+        appBg: '#ffffff',
+        workspaceBg: '#f1f5f9',
         radius: 16,
         borderWidth: 1
       },
@@ -332,6 +332,6 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
       historyStep: 0,
       activeComponentId: null,
       isPreviewMode: false,
-      isDarkMode: true
+      isDarkMode: false
     })
 }));

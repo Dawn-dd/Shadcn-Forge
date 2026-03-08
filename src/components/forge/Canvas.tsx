@@ -41,7 +41,7 @@ export const Canvas: React.FC<CanvasProps> = ({ activeTab }) => {
       )}
 
       {/* 内容区 */}
-      <div className="relative z-10 p-4 sm:p-8 flex justify-center items-start min-h-full">
+      <div className="relative z-10 p-4 sm:p-8 flex justify-center items-start min-h-full w-full">
         {activeTab === 'design' && <DesignView />}
         {activeTab === 'inspect' && <InspectView />}
         {activeTab === 'export' && <CodeExporter />}

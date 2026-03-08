@@ -48,7 +48,7 @@ export const DesignView: React.FC = () => {
     <div
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`w-full max-w-4xl mx-auto transition-all duration-300 ${
+      className={`w-full max-w-4xl mx-auto transition-colors duration-300 ${
         layout.direction === 'row' ? 'flex flex-row' : 'flex flex-col'
       } ${getAlignClass()}`}
       style={{
@@ -94,7 +94,7 @@ export const DesignView: React.FC = () => {
                   setActiveComponentId(item.id);
                 }
               }}
-              className={`relative group transition-all ${
+              className={`relative group transition-colors ${
                 layout.direction === 'row' ? 'flex-shrink-0' : 'w-full'
               }`}
               style={{
