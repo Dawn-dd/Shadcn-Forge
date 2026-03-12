@@ -41,6 +41,9 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
   const handleDragStart = (e: React.DragEvent) => {
     if (isPreviewMode) return;
     e.dataTransfer.setData('forge-item', item.id);
+    // also set text/plain for broader compatibility
+    e.dataTransfer.setData('text/plain', item.id);
+    e.dataTransfer.effectAllowed = 'move';
     setDraggedId(item.id);
     e.stopPropagation();
   };
@@ -78,6 +81,7 @@ export const CanvasItem: React.FC<CanvasItemProps> = ({
 
   return (
     <div
+      data-canvas-item={item.id}
       draggable={!isPreviewMode}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}

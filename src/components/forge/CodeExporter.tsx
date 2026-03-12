@@ -1,37 +1,46 @@
 import React, { useState, useMemo } from 'react';
 import { Copy, Check, Download } from 'lucide-react';
 import { useForgeStore } from '@/store/forgeStore';
-import { generateReactCode, generateHTMLCode } from '@/lib/codeGenerator';
+import { generateReactCode, generateReactJSCode, generateHTMLCode, generateVueCode, generateProjectStructure } from '@/lib/codeGenerator';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-jsx';
 import 'prismjs/components/prism-tsx';
 import 'prismjs/themes/prism-tomorrow.css';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 export const CodeExporter: React.FC = () => {
   const { canvasItems, theme } = useForgeStore();
-  const [codeType, setCodeType] = useState<'react' | 'html'>('react');
+  // 框架与语言选择
+  const [framework, setFramework] = useState<'react' | 'vue' | 'html'>('react');
+  const [language, setLanguage] = useState<'ts' | 'js'>('ts');
   const [copied, setCopied] = useState(false);
+  const [styleMode, setStyleMode] = useState<'inline' | 'external' | 'tailwind'>('inline');
+  const [downloadZip, setDownloadZip] = useState(false);
 
   // 生成代码
   const code = useMemo(() => {
-    return codeType === 'react' 
-      ? generateReactCode(canvasItems, theme)
-      : generateHTMLCode(canvasItems, theme);
-  }, [codeType, canvasItems, theme]);
+    if (framework === 'react') {
+      return language === 'ts' ? generateReactCode(canvasItems, theme, styleMode) : generateReactJSCode(canvasItems, theme, styleMode);
+    }
+    if (framework === 'vue') {
+      return generateVueCode(canvasItems, theme, styleMode);
+    }
+    // html
+    return generateHTMLCode(canvasItems, theme, styleMode);
+  }, [/*codeType*/ framework, language, canvasItems, theme, styleMode]);
 
   // 高亮代码
   const highlightedCode = useMemo(() => {
     try {
-      return Prism.highlight(
-        code,
-        codeType === 'react' ? Prism.languages.tsx : Prism.languages.html,
-        codeType === 'react' ? 'tsx' : 'html'
-      );
+      const lang = framework === 'react' ? (language === 'ts' ? 'tsx' : 'jsx') : (framework === 'html' ? 'html' : 'html');
+      const prismLang = lang === 'tsx' ? Prism.languages.tsx : (lang === 'jsx' ? Prism.languages.jsx : Prism.languages.html);
+      return Prism.highlight(code, prismLang, lang as any);
     } catch (error) {
       console.error('代码高亮失败:', error);
       return code;
     }
-  }, [code, codeType]);
+  }, [code, /*codeType*/ framework, language]);
 
   const handleCopy = async () => {
     try {
@@ -45,11 +54,28 @@ export const CodeExporter: React.FC = () => {
 
   const handleDownload = () => {
     try {
+      if (downloadZip) {
+        // generate project structure
+        const files = generateProjectStructure(canvasItems, theme, styleMode);
+        const zip = new JSZip();
+        Object.keys(files).forEach(path => {
+          zip.file(path, files[path]);
+        });
+        zip.generateAsync({ type: 'blob' }).then(content => {
+          saveAs(content, 'shadcn-forge-export.zip');
+        });
+        return;
+      }
+
       const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = codeType === 'react' ? 'Component.tsx' : 'index.html';
+      let filename = 'component.txt';
+      if (framework === 'react') filename = language === 'ts' ? 'Component.tsx' : 'Component.jsx';
+      else if (framework === 'html') filename = 'index.html';
+      else if (framework === 'vue') filename = 'Component.vue';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -63,27 +89,50 @@ export const CodeExporter: React.FC = () => {
     <div className="w-full max-w-5xl bg-white dark:bg-[#0d0d0d] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xl">
       {/* 顶部工具栏 */}
       <div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setCodeType('react')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-              codeType === 'react'
-                ? 'bg-indigo-500 text-white shadow-lg'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            React + TypeScript
-          </button>
-          <button
-            onClick={() => setCodeType('html')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-              codeType === 'html'
-                ? 'bg-indigo-500 text-white shadow-lg'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            HTML + Tailwind
-          </button>
+        <div className="flex items-center gap-4">
+          <div>
+            <label className="text-xs text-slate-500 block mb-1">框架</label>
+            <select
+              value={framework}
+              onChange={(e) => setFramework(e.target.value as any)}
+              className="px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-sm"
+            >
+              <option value="react">React</option>
+              <option value="vue">Vue</option>
+              <option value="html">HTML + Tailwind</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-500 block mb-1">语言</label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as any)}
+              className="px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-sm"
+              disabled={framework !== 'react'}
+            >
+              <option value="ts">TypeScript (TSX)</option>
+              <option value="js">JavaScript (JSX)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-500 block mb-1">样式导出</label>
+            <select
+              value={styleMode}
+              onChange={(e) => setStyleMode(e.target.value as any)}
+              className="px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-sm"
+            >
+              <option value="inline">Inline (内联)</option>
+              <option value="external">External CSS</option>
+              <option value="tailwind">Tailwind-mapped</option>
+            </select>
+          </div>
+
+          <div className="flex items-end">
+            <label className="text-xs text-slate-500 block mr-2">ZIP</label>
+            <input type="checkbox" checked={downloadZip} onChange={(e) => setDownloadZip(e.target.checked)} />
+          </div>
         </div>
 
         <div className="flex gap-2">
@@ -108,7 +157,7 @@ export const CodeExporter: React.FC = () => {
       <div className="overflow-auto max-h-[600px] custom-scrollbar">
         <pre className="p-6 text-xs leading-relaxed">
           <code
-            className={`language-${codeType === 'react' ? 'tsx' : 'html'}`}
+            className={`language-${framework === 'react' ? (language === 'ts' ? 'tsx' : 'jsx') : 'html'}`}
             dangerouslySetInnerHTML={{ __html: highlightedCode }}
           />
         </pre>

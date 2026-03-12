@@ -1,4 +1,4 @@
-import { ComponentConfig, ButtonProps, InputProps, TextareaProps, SwitchProps, CheckboxProps, Theme } from '@/types';
+import { ComponentConfig, ButtonProps, InputProps, TextareaProps, SwitchProps, CheckboxProps, Theme, ComponentItem } from '@/types';
 import { MousePointer2, Type, AlignLeft, ToggleLeft, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,27 +24,35 @@ export const formComponents: Record<string, ComponentConfig> = {
       },
       size: { type: 'select', options: ['sm', 'default', 'lg'] }
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const buttonProps = props as unknown as ButtonProps;
-      return (
-        <Button 
-          variant={buttonProps.variant} 
-          size={buttonProps.size}
-          style={{
-            backgroundColor: buttonProps.variant === 'default' ? theme?.primary : 
+      const styleFromItem = item?.style || {};
+      const bgFromVariant = buttonProps.variant === 'default' ? theme?.primary : 
                            buttonProps.variant === 'secondary' ? theme?.secondary :
-                           buttonProps.variant === 'destructive' ? theme?.destructive : undefined,
-            color: buttonProps.variant === 'default' ? (theme?.primaryForeground || '#ffffff') :
-                   buttonProps.variant === 'secondary' ? theme?.secondaryForeground : 
-                   buttonProps.variant === 'outline' || buttonProps.variant === 'ghost' ? theme?.foreground : undefined,
-            borderRadius: theme ? `${theme.radius}px` : undefined,
-            borderWidth: theme?.borderWidth ? `${theme.borderWidth}px` : undefined,
-            borderColor: buttonProps.variant === 'outline' ? theme?.border : undefined
-          }}
-        >
-          {buttonProps.children}
-        </Button>
-      );
+                           buttonProps.variant === 'destructive' ? theme?.destructive : undefined;
+      const colorFromVariant = buttonProps.variant === 'default' ? (theme?.primaryForeground || '#ffffff') :
+                              buttonProps.variant === 'secondary' ? theme?.secondaryForeground :
+                              buttonProps.variant === 'outline' || buttonProps.variant === 'ghost' ? theme?.foreground : undefined;
+
+      const mergedStyle: any = {
+        backgroundColor: styleFromItem.backgroundColor ?? bgFromVariant,
+        color: styleFromItem.color ?? colorFromVariant,
+        borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
+        borderWidth: styleFromItem.borderWidth !== undefined ? `${styleFromItem.borderWidth}px` : (theme?.borderWidth ? `${theme.borderWidth}px` : undefined),
+        borderColor: styleFromItem.borderColor ?? (buttonProps.variant === 'outline' ? theme?.border : undefined),
+        padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined,
+        fontSize: styleFromItem.fontSize !== undefined ? `${styleFromItem.fontSize}px` : undefined,
+        width: styleFromItem.width === 'full' ? '100%' : (styleFromItem.width === 'auto' || !styleFromItem.width ? undefined : styleFromItem.width)
+      };
+       return (
+         <Button 
+           variant={buttonProps.variant} 
+           size={buttonProps.size}
+           style={mergedStyle}
+         >
+           {buttonProps.children}
+         </Button>
+       );
     }
   },
 
@@ -62,21 +70,26 @@ export const formComponents: Record<string, ComponentConfig> = {
         options: ['text', 'email', 'password', 'number', 'tel', 'url']
       }
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const inputProps = props as unknown as InputProps;
+      const styleFromItem = item?.style || {};
+      const mergedStyle: any = {
+        backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
+        borderColor: styleFromItem.borderColor ?? theme?.border,
+        color: styleFromItem.color ?? theme?.foreground,
+        borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
+        borderWidth: styleFromItem.borderWidth !== undefined ? `${styleFromItem.borderWidth}px` : (theme?.borderWidth ? `${theme.borderWidth}px` : undefined),
+        padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined,
+        fontSize: styleFromItem.fontSize !== undefined ? `${styleFromItem.fontSize}px` : undefined,
+        width: styleFromItem.width === 'full' ? '100%' : (styleFromItem.width === 'auto' || !styleFromItem.width ? undefined : styleFromItem.width)
+      };
       return (
         <div className="w-full space-y-2">
           <Input
             type={inputProps.type}
             placeholder={inputProps.placeholder}
             className="w-full"
-            style={{
-              backgroundColor: theme?.background,
-              borderColor: theme?.border,
-              color: theme?.foreground,
-              borderRadius: theme ? `${theme.radius}px` : undefined,
-              borderWidth: theme?.borderWidth ? `${theme.borderWidth}px` : undefined,
-            }}
+            style={mergedStyle}
           />
         </div>
       );
@@ -94,21 +107,26 @@ export const formComponents: Record<string, ComponentConfig> = {
     propSchema: {
       rows: { type: 'number', min: 2, max: 10 }
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const textareaProps = props as unknown as TextareaProps;
+      const styleFromItem = item?.style || {};
+      const mergedStyle: any = {
+        backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
+        borderColor: styleFromItem.borderColor ?? theme?.border,
+        color: styleFromItem.color ?? theme?.foreground,
+        borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
+        borderWidth: styleFromItem.borderWidth !== undefined ? `${styleFromItem.borderWidth}px` : (theme?.borderWidth ? `${theme.borderWidth}px` : undefined),
+        padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined,
+        fontSize: styleFromItem.fontSize !== undefined ? `${styleFromItem.fontSize}px` : undefined,
+        width: styleFromItem.width === 'full' ? '100%' : (styleFromItem.width === 'auto' || !styleFromItem.width ? undefined : styleFromItem.width)
+      };
       return (
         <div className="w-full space-y-2">
           <Textarea
             placeholder={textareaProps.placeholder}
             rows={textareaProps.rows}
             className="w-full"
-            style={{
-              backgroundColor: theme?.background,
-              borderColor: theme?.border,
-              color: theme?.foreground,
-              borderRadius: theme ? `${theme.radius}px` : undefined,
-              borderWidth: theme?.borderWidth ? `${theme.borderWidth}px` : undefined,
-            }}
+            style={mergedStyle}
           />
         </div>
       );
@@ -123,33 +141,27 @@ export const formComponents: Record<string, ComponentConfig> = {
       label: '启用推送通知',
       checked: true
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const switchProps = props as unknown as SwitchProps;
+      const styleFromItem = item?.style || {};
+      // render Switch and Label inline without outer container; only change checked color and label color
       return (
-        <div 
-          className="flex items-center space-x-2 w-full p-3 border rounded-lg bg-card"
-          style={{
-            backgroundColor: theme?.background,
-            borderColor: theme?.border,
-            borderRadius: theme ? `${theme.radius}px` : undefined,
-            borderWidth: theme?.borderWidth ? `${theme.borderWidth}px` : undefined,
-          }}
-        >
-          <Switch 
-            id="switch" 
+        <>
+          <Switch
+            id="switch"
             checked={switchProps.checked}
             style={{
-              backgroundColor: switchProps.checked ? theme?.primary : theme?.muted
+              backgroundColor: switchProps.checked ? (styleFromItem.backgroundColor ?? theme?.primary) : undefined
             }}
           />
-          <Label 
-            htmlFor="switch" 
+          <Label
+            htmlFor="switch"
             className="text-sm font-medium cursor-pointer"
-            style={{ color: theme?.foreground }}
+            style={{ color: styleFromItem.color ?? theme?.foreground, marginLeft: '8px' }}
           >
             {switchProps.label}
           </Label>
-        </div>
+        </>
       );
     }
   },
@@ -162,22 +174,23 @@ export const formComponents: Record<string, ComponentConfig> = {
       label: '我同意服务条款',
       checked: true
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const checkboxProps = props as unknown as CheckboxProps;
+      const styleFromItem = item?.style || {};
       return (
-        <div className="flex items-center space-x-2 w-full">
+        <div className="flex items-center space-x-2 w-full" style={{ padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined }}>
           <Checkbox 
             id="checkbox" 
             checked={checkboxProps.checked}
             style={{
-              borderColor: theme?.border,
-              backgroundColor: checkboxProps.checked ? theme?.primary : 'transparent'
+              borderColor: styleFromItem.borderColor ?? theme?.border,
+              backgroundColor: checkboxProps.checked ? (styleFromItem.backgroundColor ?? theme?.primary) : 'transparent'
             }}
           />
           <Label
             htmlFor="checkbox"
             className="text-sm font-medium leading-none cursor-pointer"
-            style={{ color: theme?.foreground }}
+            style={{ color: styleFromItem.color ?? theme?.foreground, fontSize: styleFromItem.fontSize !== undefined ? `${styleFromItem.fontSize}px` : undefined }}
           >
             {checkboxProps.label}
           </Label>
@@ -185,4 +198,4 @@ export const formComponents: Record<string, ComponentConfig> = {
       );
     }
   }
-};
+ };

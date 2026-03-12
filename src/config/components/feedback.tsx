@@ -1,4 +1,4 @@
-import { ComponentConfig, AlertProps, ProgressProps, SkeletonProps, Theme} from '@/types';
+import { ComponentConfig, AlertProps, ProgressProps, SkeletonProps, Theme, ComponentItem} from '@/types';
 import { Bell, Activity, SquareDashed } from 'lucide-react';
 import {
   Alert,
@@ -21,21 +21,25 @@ export const feedbackComponents: Record<string, ComponentConfig> = {
     propSchema: {
       variant: { type: 'select', options: ['default', 'destructive'] }
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const alertProps = props as unknown as AlertProps;
+      const styleFromItem = item?.style || {};
+      const mergedStyle: any = {
+        backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
+        borderColor: styleFromItem.borderColor ?? (alertProps.variant === 'destructive' ? theme?.destructive : theme?.border),
+        color: styleFromItem.color ?? theme?.foreground,
+        borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
+        borderWidth: styleFromItem.borderWidth !== undefined ? `${styleFromItem.borderWidth}px` : (theme?.borderWidth ? `${theme.borderWidth}px` : undefined),
+        padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined,
+        width: styleFromItem.width === 'full' ? '100%' : undefined
+      };
       return (
         <Alert 
           variant={alertProps.variant} 
           className="w-full"
-          style={{
-            backgroundColor: theme?.background,
-            borderColor: alertProps.variant === 'destructive' ? theme?.destructive : theme?.border,
-            color: theme?.foreground,
-            borderRadius: theme ? `${theme.radius}px` : undefined,
-            borderWidth: theme?.borderWidth ? `${theme.borderWidth}px` : undefined,
-          }}
+          style={mergedStyle}
         >
-          <AlertTitle style={{ color: theme?.foreground }}>
+          <AlertTitle style={{ color: styleFromItem.color ?? theme?.foreground }}>
             {alertProps.title}
           </AlertTitle>
           <AlertDescription style={{ color: theme?.mutedForeground }}>
@@ -57,8 +61,11 @@ export const feedbackComponents: Record<string, ComponentConfig> = {
     propSchema: {
       value: { type: 'number', min: 0, max: 100 }
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const progressProps = props as unknown as ProgressProps;
+      const styleFromItem = item?.style || {};
+      // Only change the filled bar color based on item.style.backgroundColor; keep track and labels using theme
+      const fillColor = styleFromItem.backgroundColor ?? theme?.primary;
       return (
         <div className="w-full space-y-2">
           {progressProps.label && (
@@ -75,14 +82,14 @@ export const feedbackComponents: Record<string, ComponentConfig> = {
             className="h-2 w-full rounded-full overflow-hidden"
             style={{ 
               backgroundColor: theme?.muted,
-              borderRadius: theme ? `${theme.radius}px` : undefined
+              borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined)
             }}
           >
             <div 
               className="h-full transition-all duration-300"
               style={{ 
                 width: `${progressProps.value}%`,
-                backgroundColor: theme?.primary 
+                backgroundColor: fillColor 
               }}
             />
           </div>
@@ -101,45 +108,26 @@ export const feedbackComponents: Record<string, ComponentConfig> = {
     propSchema: {
       lines: { type: 'number', min: 1, max: 5 }
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const skeletonProps = props as unknown as SkeletonProps;
+      const styleFromItem = item?.style || {};
+      const bg = styleFromItem.backgroundColor ?? theme?.muted;
+      const radius = styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined);
       return (
         <div className="w-full space-y-3">
           <div className="flex items-center space-x-4">
             <Skeleton 
               className="h-12 w-12 rounded-full" 
-              style={{ 
-                backgroundColor: theme?.muted,
-                borderRadius: theme ? `${theme.radius}px` : undefined
-              }}
+              style={{ backgroundColor: bg, borderRadius: radius }}
             />
             <div className="space-y-2 flex-1">
-              <Skeleton 
-                className="h-4 w-1/3" 
-                style={{ 
-                  backgroundColor: theme?.muted,
-                  borderRadius: theme ? `${theme.radius}px` : undefined
-                }}
-              />
-              <Skeleton 
-                className="h-4 w-1/4" 
-                style={{ 
-                  backgroundColor: theme?.muted,
-                  borderRadius: theme ? `${theme.radius}px` : undefined
-                }}
-              />
+              <Skeleton className="h-4 w-1/3" style={{ backgroundColor: bg, borderRadius: radius }} />
+              <Skeleton className="h-4 w-1/4" style={{ backgroundColor: bg, borderRadius: radius }} />
             </div>
           </div>
           <div className="space-y-2">
             {Array.from({ length: skeletonProps.lines }).map((_, i) => (
-              <Skeleton 
-                key={i} 
-                className="h-4 w-full" 
-                style={{ 
-                  backgroundColor: theme?.muted,
-                  borderRadius: theme ? `${theme.radius}px` : undefined
-                }}
-              />
+              <Skeleton key={i} className="h-4 w-full" style={{ backgroundColor: bg, borderRadius: radius }} />
             ))}
           </div>
         </div>

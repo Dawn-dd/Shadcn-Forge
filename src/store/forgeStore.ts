@@ -37,7 +37,7 @@ const INITIAL_ITEMS: ComponentItem[] = [
 ];
 
 export const useForgeStore = create<ForgeStore>((set, get) => ({
-  isDarkMode: true,
+  isDarkMode: false,
   theme: {
     ...THEME_PRESETS.Default,
     background: '#ffffff',
@@ -192,24 +192,31 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
       };
     }),
 
-  reorderComponent: (draggedId, targetId) =>
+  reorderComponent: (draggedId, targetId, position = 'before') =>
     set((state) => {
       if (draggedId === targetId) return state;
 
       const items = [...state.canvasItems];
       const oldIndex = items.findIndex((i) => i.id === draggedId);
-      
-      //  找不到元素直接返回，防止 splice(-1) 删掉最后一条
+      // 找不到元素直接返回，防止 splice(-1) 删掉最后一条
       if (oldIndex === -1) return state;
 
       // 提取拖拽的元素
       const [movedItem] = items.splice(oldIndex, 1);
-      
+
       // 删除 oldIndex 元素后，再去寻找新位置的索引，防止索引漂移
       const newIndex = items.findIndex((i) => i.id === targetId);
-      if (newIndex === -1) return state;
+      if (newIndex === -1) {
+        // 如果目标不存在，则放到末尾
+        items.push(movedItem);
+        return state._saveHistory(items);
+      }
 
-      items.splice(newIndex, 0, movedItem);
+      if (position === 'after') {
+        items.splice(newIndex + 1, 0, movedItem);
+      } else {
+        items.splice(newIndex, 0, movedItem);
+      }
 
       return state._saveHistory(items);
     }),

@@ -43,6 +43,12 @@ export interface ComponentItem {
     borderColor?: string;
     borderRadius?: number;
     borderWidth?: number;
+    // 额外可编辑的样式字段
+    padding?: number; // px
+    fontSize?: number; // px
+    width?: 'auto' | 'full' | string;
+    // 每个组件可单独设置排版方向
+    direction?: 'column' | 'row';
   };
 }
 
@@ -60,7 +66,8 @@ export interface ComponentConfig {
   category: string;
   defaultProps: Record<string, unknown>;
   propSchema?: Record<string, PropSchema>;
-  render: (props: Record<string, unknown>, theme?: Theme, layout?: Layout) => React.ReactNode;
+  // 现在 render 可以接收第四个参数为 ComponentItem，方便读取 item.style 等信息
+  render: (props: Record<string, unknown>, theme?: Theme, layout?: Layout, item?: ComponentItem) => React.ReactNode;
 }
 
 export interface ForgeStore {
@@ -84,7 +91,7 @@ export interface ForgeStore {
   appendComponents: (items: ComponentItem[]) => void;
   removeComponent: (id: string) => void;
   duplicateComponent: (id: string) => void;
-  reorderComponent: (draggedId: string, targetId: string) => void;
+  reorderComponent: (draggedId: string, targetId: string, position?: 'before' | 'after') => void;
   insertComponentAt: (type: string, targetId: string | null) => void;
   moveComponent: (id: string, direction: 'up' | 'down') => void;
   updateComponentProp: (id: string, key: string, value: unknown) => void;

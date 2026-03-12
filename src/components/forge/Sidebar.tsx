@@ -182,6 +182,38 @@ export const Sidebar: React.FC = () => {
                 />
               </div>
 
+              {/* 单组件排版方向 */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    排版方向 (Direction)
+                  </label>
+                  <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded">
+                    {activeComponent.style?.direction ?? layout.direction}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateComponentStyle(activeComponent.id, { direction: 'column' })}
+                    className={`flex-1 py-1 text-xs rounded ${
+                      (activeComponent.style?.direction ?? layout.direction) === 'column' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    }`}
+                    title="Column"
+                  >
+                    垂直
+                  </button>
+                  <button
+                    onClick={() => updateComponentStyle(activeComponent.id, { direction: 'row' })}
+                    className={`flex-1 py-1 text-xs rounded ${
+                      (activeComponent.style?.direction ?? layout.direction) === 'row' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    }`}
+                    title="Row"
+                  >
+                    横向
+                  </button>
+                </div>
+              </div>
+
               {/* 重置按钮 */}
               <button
                 onClick={() => {
@@ -370,6 +402,7 @@ export const Sidebar: React.FC = () => {
                           onDragStart={(e) => {
                             e.dataTransfer.setData('forge-type', type);
                           }}
+                          onClick={() => useForgeStore.getState().addComponent(type)}
                           className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-grab active:cursor-grabbing hover:border-orange-500 hover:shadow-md transition-all group"
                         >
                           <div className="text-slate-400 group-hover:text-orange-500 transition-colors shrink-0">

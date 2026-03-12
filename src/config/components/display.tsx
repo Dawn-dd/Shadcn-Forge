@@ -1,4 +1,4 @@
-import { ComponentConfig, CardProps, AvatarProps, BadgeProps, SeparatorProps, Theme } from '@/types';
+import { ComponentConfig, CardProps, AvatarProps, BadgeProps, SeparatorProps, Theme, ComponentItem } from '@/types';
 import { Box, User, Tag, Minus } from 'lucide-react';
 import {
   Card,
@@ -19,18 +19,23 @@ export const displayComponents: Record<string, ComponentConfig> = {
       title: '数据报告',
       description: '基于您的使用情况生成的智能摘要。'
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const cardProps = props as unknown as CardProps;
-      return (
-        <Card 
+      const styleFromItem = item?.style || {};
+      const mergedStyle: any = {
+        backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
+        borderColor: styleFromItem.borderColor ?? theme?.border,
+        borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
+        borderWidth: styleFromItem.borderWidth !== undefined ? `${styleFromItem.borderWidth}px` : (theme?.borderWidth ? `${theme.borderWidth}px` : undefined),
+        padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined,
+        color: styleFromItem.color ?? undefined,
+        width: styleFromItem.width === 'full' ? '100%' : (styleFromItem.width === 'auto' || !styleFromItem.width ? undefined : styleFromItem.width)
+      };
+       return (
+         <Card 
           className="w-full"
-          style={{
-            backgroundColor: theme?.background,
-            borderColor: theme?.border,
-            borderRadius: theme ? `${theme.radius}px` : undefined,
-            borderWidth: theme?.borderWidth ? `${theme.borderWidth}px` : undefined,
-          }}
-        >
+          style={mergedStyle}
+         >
           <CardHeader>
             <CardTitle style={{ color: theme?.foreground }}>
               {cardProps.title}
@@ -58,7 +63,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
     propSchema: {
       size: { type: 'select', options: ['sm', 'default', 'lg'] }
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const avatarProps = props as unknown as AvatarProps;
       const sizeClasses: Record<AvatarProps['size'], string> = {
         sm: 'h-8 w-8',
@@ -66,14 +71,19 @@ export const displayComponents: Record<string, ComponentConfig> = {
         lg: 'h-12 w-12'
       };
       
+      const styleFromItem = item?.style || {};
+      const mergedStyle: any = {
+        backgroundColor: styleFromItem.backgroundColor ?? theme?.primary,
+        color: (styleFromItem.color ?? (theme?.primaryForeground || '#ffffff')),
+        borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : undefined,
+        width: sizeClasses[avatarProps.size].split(' ')[1]
+      };
+
       return (
-        <Avatar className={sizeClasses[avatarProps.size]}>
+        <Avatar className={sizeClasses[avatarProps.size]} style={{ backgroundColor: mergedStyle.backgroundColor }}>
           {avatarProps.src && <AvatarImage src={avatarProps.src} alt={avatarProps.fallback} />}
           <AvatarFallback 
-            style={{ 
-              backgroundColor: theme?.primary,
-              color: theme?.primaryForeground || '#ffffff'
-            }}
+            style={{ color: mergedStyle.color }}
           >
             {avatarProps.fallback}
           </AvatarFallback>
@@ -96,23 +106,28 @@ export const displayComponents: Record<string, ComponentConfig> = {
         options: ['default', 'secondary', 'destructive', 'outline']
       }
     },
-    render: (props, theme?: Theme) => {
+    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const badgeProps = props as unknown as BadgeProps;
-      return (
+      const styleFromItem = item?.style || {};
+      const mergedStyle: any = {
+        backgroundColor: styleFromItem.backgroundColor ?? (badgeProps.variant === 'default' ? theme?.primary : undefined),
+        color: styleFromItem.color ?? (badgeProps.variant === 'default' ? (theme?.primaryForeground || '#ffffff') : theme?.foreground),
+        borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
+        borderColor: styleFromItem.borderColor ?? (badgeProps.variant === 'outline' ? theme?.border : undefined),
+        borderWidth: styleFromItem.borderWidth !== undefined ? `${styleFromItem.borderWidth}px` : undefined,
+        padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined,
+        fontSize: styleFromItem.fontSize !== undefined ? `${styleFromItem.fontSize}px` : undefined
+      };
+       return (
         <Badge 
           variant={badgeProps.variant}
-          style={{
-            backgroundColor: badgeProps.variant === 'default' ? theme?.primary : undefined,
-            color: badgeProps.variant === 'default' ? (theme?.primaryForeground || '#ffffff') : theme?.foreground,
-            borderRadius: theme ? `${theme.radius}px` : undefined,
-            borderColor: badgeProps.variant === 'outline' ? theme?.border : undefined
-          }}
+          style={mergedStyle}
         >
           {badgeProps.text}
         </Badge>
-      );
-    }
-  },
+       );
+     }
+   },
 
   Separator: {
     name: '分割线 (Separator)',
