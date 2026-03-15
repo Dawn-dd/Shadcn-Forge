@@ -40,6 +40,7 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
   isPreviewMode: false,
   history: [INITIAL_ITEMS],
   historyStep: 0,
+  aiSessionLog: [],
 
   _saveHistory: (newItems) => {
     const { history, historyStep } = get();
@@ -307,6 +308,57 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
       return state._saveHistory(newItems);
     }),
 
+  replaceComponentProps: (id, props) =>
+    set((state) => {
+      const newItems = state.canvasItems.map((item) =>
+        item.id === id ? { ...item, props: structuredClone(props) } : item
+      );
+      return state._saveHistory(newItems);
+    }),
+
+  replaceCardChildren: (cardId, cardProps, children) =>
+    set((state) => {
+      const cardIndex = state.canvasItems.findIndex((item) => item.id === cardId && item.type === 'Card');
+      if (cardIndex === -1) return state;
+
+      const descendantIds = new Set<string>();
+      const queue = [cardId];
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        state.canvasItems.forEach((item) => {
+          if (item.parentId === currentId && !descendantIds.has(item.id)) {
+            descendantIds.add(item.id);
+            queue.push(item.id);
+          }
+        });
+      }
+
+      const nextChildren = children.map((child) => ({
+        ...child,
+        parentId: cardId
+      }));
+
+      const retainedItems = state.canvasItems
+        .filter((item) => !descendantIds.has(item.id))
+        .map((item) => (item.id === cardId ? { ...item, props: structuredClone(cardProps) } : item));
+
+      const retainedCardIndex = retainedItems.findIndex((item) => item.id === cardId);
+      retainedItems.splice(retainedCardIndex + 1, 0, ...nextChildren);
+
+      return {
+        ...state._saveHistory(retainedItems),
+        activeComponentId: cardId
+      };
+    }),
+
+  appendAISessionEntry: (entry) =>
+    set((state) => ({
+      aiSessionLog: [...state.aiSessionLog, { ...entry, timestamp: Date.now() }].slice(-12)
+    })),
+
+  clearAISessionLog: () => set({ aiSessionLog: [] }),
+
   undo: () =>
     set((state) => {
       if (state.historyStep > 0) {
@@ -348,6 +400,7 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
       canvasItems: INITIAL_ITEMS,
       history: [INITIAL_ITEMS],
       historyStep: 0,
+      aiSessionLog: [],
       activeComponentId: null,
       isPreviewMode: false,
       isDarkMode: false
@@ -358,7 +411,8 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
     isDarkMode: state.isDarkMode,
     theme: state.theme,
     layout: state.layout,
-    canvasItems: state.canvasItems
+    canvasItems: state.canvasItems,
+    aiSessionLog: state.aiSessionLog
   }),
   merge: (persistedState, currentState) => {
     const persisted = persistedState as Partial<ForgeStore>;

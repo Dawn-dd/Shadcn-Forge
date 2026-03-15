@@ -87,6 +87,7 @@ export interface ForgeStore {
   isPreviewMode: boolean;
   history: ComponentItem[][];
   historyStep: number;
+  aiSessionLog: AISessionEntry[];
   
   _saveHistory: (newItems: ComponentItem[]) => { canvasItems: ComponentItem[]; history: ComponentItem[][]; historyStep: number };
   toggleDarkMode: () => void;
@@ -105,6 +106,10 @@ export interface ForgeStore {
   insertComponentAt: (type: string, targetId: string | null, position?: 'before' | 'after') => void;
   moveComponent: (id: string, direction: 'up' | 'down') => void;
   updateComponentProp: (id: string, key: string, value: unknown) => void;
+  replaceComponentProps: (id: string, props: Record<string, unknown>) => void;
+  replaceCardChildren: (cardId: string, cardProps: Record<string, unknown>, children: ComponentItem[]) => void;
+  appendAISessionEntry: (entry: Omit<AISessionEntry, 'timestamp'>) => void;
+  clearAISessionLog: () => void;
   undo: () => void;
   redo: () => void;
   setActiveComponentId: (id: string | null) => void;
@@ -113,6 +118,14 @@ export interface ForgeStore {
 }
 
 // AI 生成相关类型
+export interface AISessionEntry {
+  scope: 'page' | 'local';
+  prompt: string;
+  resultSummary: string;
+  componentType?: string;
+  timestamp: number;
+}
+
 export interface AIGeneratedComponent {
   type: string;
   props: Record<string, unknown>;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Send, Loader2, Sparkles, Wand2 } from 'lucide-react';
+import { Send, Loader2, Sparkles, Wand2, RotateCcw } from 'lucide-react';
 import { useForgeStore } from '@/store/forgeStore';
 import { fetchAI } from '@/lib/ai';
 import { COMPONENT_REGISTRY } from '@/config/components';
@@ -229,6 +229,18 @@ const summarizeCanvasContext = (items: ComponentItem[]): string => {
   return `当前画布共有 ${items.length} 个组件（顶层 ${topLevelCount}，卡片子级 ${childCount}），主要类型：${topTypes || '无'}。`;
 };
 
+const formatRecentAISession = (
+  entries: ReturnType<typeof useForgeStore.getState>['aiSessionLog'],
+  limit: number = 6
+) => {
+  const recent = entries.slice(-limit);
+  if (recent.length === 0) return '无历史对话。';
+
+  return recent
+    .map((entry, index) => `${index + 1}. [${entry.scope}] ${entry.prompt} -> ${entry.resultSummary}`)
+    .join('\n');
+};
+
 const extractJsonPayload = (raw: string): string => {
   const trimmed = raw.trim();
   const withoutFence = trimmed
@@ -405,7 +417,7 @@ const getUserFacingError = (error: unknown): string => {
 };
 
 export const AIPrompt: React.FC = () => {
-  const { layout, theme, canvasItems, appendComponents, clearCanvas } = useForgeStore();
+  const { layout, theme, canvasItems, appendComponents, clearCanvas, aiSessionLog, appendAISessionEntry, clearAISessionLog } = useForgeStore();
   const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [aiPromptText, setAiPromptText] = useState('');
   const [generationLanguage, setGenerationLanguage] = useState<AIGenerationLanguage>('zh-CN');
@@ -426,6 +438,7 @@ export const AIPrompt: React.FC = () => {
       const canvasContext = summarizeCanvasContext(canvasItems);
       const themeContext = summarizeThemeContext(theme);
       const hintedTypes = inferPromptComponentHints(aiPromptText);
+      const aiSessionContext = formatRecentAISession(aiSessionLog);
       const sysPrompt = [
         '你是一个专业的无代码 UI 工程师。',
         '你的任务是根据用户描述，生成一个由现有组件组成的界面草图。',
@@ -443,6 +456,7 @@ export const AIPrompt: React.FC = () => {
         generationMode === 'append'
           ? '生成结果应与当前画布兼容，尽量补充而不是重复已有结构。'
           : '用户希望重做当前画布，请生成一套完整可替换的新结构。',
+        `最近会话上下文（用于保持连续风格和意图）：\n${aiSessionContext}`,
         `当前画布上下文：${canvasContext}`,
         `当前主题设计 token：${themeContext}`,
         '视觉层级规则：每个核心区域只保留一个主操作按钮（Button variant=default），次要动作使用 outline 或 secondary，危险动作使用 destructive。',
@@ -476,6 +490,11 @@ export const AIPrompt: React.FC = () => {
           clearCanvas();
         }
         appendComponents(validItems);
+        appendAISessionEntry({
+          scope: 'page',
+          prompt: aiPromptText,
+          resultSummary: `生成 ${validItems.length} 个组件（模式：${generationMode}）`
+        });
         setAiPromptText('');
         setShowAiPrompt(false);
       } else {
@@ -525,6 +544,21 @@ export const AIPrompt: React.FC = () => {
           className="flex-1 bg-transparent border-none outline-none text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400"
           disabled={isGenerating}
         />
+        <button
+          type="button"
+          onClick={() => {
+            if (aiSessionLog.length === 0) return;
+            if (window.confirm('确认清空 AI 会话上下文吗？清空后将不再继承最近对话意图。')) {
+              clearAISessionLog();
+            }
+          }}
+          disabled={isGenerating || aiSessionLog.length === 0}
+          className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800"
+          title="清空 AI 会话上下文"
+        >
+          <RotateCcw size={12} />
+          上下文 {aiSessionLog.length}
+        </button>
         <button 
           onClick={handleAIGenerate}
           disabled={isGenerating || !aiPromptText.trim()}

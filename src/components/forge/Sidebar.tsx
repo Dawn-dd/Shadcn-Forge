@@ -32,7 +32,7 @@ export const Sidebar: React.FC = () => {
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              FORGE 5.0 AI
+              FORGE AI
             </h2>
           </div>
         </div>
