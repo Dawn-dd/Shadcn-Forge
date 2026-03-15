@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { ForgeStore, ComponentItem } from '@/types';
 import { THEME_PRESETS } from '@/config/themes';
 import { COMPONENT_REGISTRY } from '@/config/components';
@@ -6,30 +7,34 @@ import { generateId } from '@/lib/utils';
 
 const INITIAL_ITEMS: ComponentItem[] = [];
 
-export const useForgeStore = create<ForgeStore>((set, get) => ({
+const DEFAULT_THEME = {
+  ...THEME_PRESETS.Default,
+  background: '#ffffff',
+  foreground: '#0f172a',
+  primaryForeground: '#ffffff',
+  mutedForeground: '#64748b',
+  border: '#e2e8f0',
+  muted: '#f1f5f9',
+  radius: 8,
+  borderWidth: 1
+};
+
+const DEFAULT_LAYOUT = {
+  padding: 32,
+  gap: 24,
+  direction: 'column' as const,
+  align: 'center' as const,
+  backdrop: 'dots' as const,
+  appBg: '#ffffff',
+  workspaceBg: '#f1f5f9',
+  radius: 16,
+  borderWidth: 1
+};
+
+export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
   isDarkMode: false,
-  theme: {
-    ...THEME_PRESETS.Default,
-    background: '#ffffff',
-    foreground: '#0f172a',
-    primaryForeground: '#ffffff',
-    mutedForeground: '#64748b',
-    border: '#e2e8f0',
-    muted: '#f1f5f9',
-    radius: 8,
-    borderWidth: 1
-  },
-  layout: {
-    padding: 32,
-    gap: 24,
-    direction: 'column',
-    align: 'center',
-    backdrop: 'dots', 
-    appBg: '#ffffff',
-    workspaceBg: '#f1f5f9',
-    radius: 16,
-    borderWidth: 1
-  },
+  theme: DEFAULT_THEME,
+  layout: DEFAULT_LAYOUT,
   canvasItems: INITIAL_ITEMS,
   activeComponentId: null,
   isPreviewMode: false,
@@ -338,28 +343,8 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
 
   resetAll: () =>
     set({
-      theme: {
-        ...THEME_PRESETS.Default,
-        background: '#ffffff',
-        foreground: '#0f172a',
-        primaryForeground: '#ffffff',
-        mutedForeground: '#64748b',
-        border: '#e2e8f0',
-        muted: '#f1f5f9',
-        radius: 8,
-        borderWidth: 1
-      },
-      layout: {
-        padding: 32,
-        gap: 24,
-        direction: 'column',
-        align: 'center',
-        backdrop: 'dots',
-        appBg: '#ffffff',
-        workspaceBg: '#f1f5f9',
-        radius: 16,
-        borderWidth: 1
-      },
+      theme: DEFAULT_THEME,
+      layout: DEFAULT_LAYOUT,
       canvasItems: INITIAL_ITEMS,
       history: [INITIAL_ITEMS],
       historyStep: 0,
@@ -367,4 +352,26 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
       isPreviewMode: false,
       isDarkMode: false
     })
+}), {
+  name: 'forge-store',
+  partialize: (state) => ({
+    isDarkMode: state.isDarkMode,
+    theme: state.theme,
+    layout: state.layout,
+    canvasItems: state.canvasItems
+  }),
+  merge: (persistedState, currentState) => {
+    const persisted = persistedState as Partial<ForgeStore>;
+    const restoredCanvasItems = persisted.canvasItems ?? currentState.canvasItems;
+
+    return {
+      ...currentState,
+      ...persisted,
+      canvasItems: restoredCanvasItems,
+      history: [JSON.parse(JSON.stringify(restoredCanvasItems))],
+      historyStep: 0,
+      activeComponentId: null,
+      isPreviewMode: false
+    } as ForgeStore;
+  }
 }));

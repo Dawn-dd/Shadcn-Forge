@@ -39,8 +39,37 @@ const LANGUAGE_OPTIONS: Array<{
   }
 ];
 
+const inferExplicitComponentCount = (prompt: string): number | null => {
+  const normalized = prompt.trim().toLowerCase();
+  const patterns = [
+    /(?:生成|做|给我|需要)\s*(\d{1,2})\s*(?:个|组)?\s*(?:组件|模块|控件)/i,
+    /(?:exactly|about|around)?\s*(\d{1,2})\s*(?:components|widgets|blocks|items)/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+    const value = Number(match[1]);
+    if (Number.isFinite(value) && value > 0) {
+      return Math.max(1, Math.min(30, value));
+    }
+  }
+
+  return null;
+};
+
 const inferComponentBudget = (prompt: string) => {
   const normalizedPrompt = prompt.trim().toLowerCase();
+  const explicitCount = inferExplicitComponentCount(prompt);
+
+  if (explicitCount !== null) {
+    return {
+      min: Math.max(1, explicitCount - 1),
+      max: explicitCount + 1,
+      hardLimit: Math.min(30, explicitCount + 3),
+      preferredCountHint: `用户明确希望约 ${explicitCount} 个组件，优先贴近这个数量。`
+    };
+  }
 
   const complexKeywords = [
     '登录',
@@ -64,18 +93,140 @@ const inferComponentBudget = (prompt: string) => {
   const wantsRicherOutput = richKeywords.some((keyword) => normalizedPrompt.includes(keyword));
 
   if (wantsComplexLayout && wantsRicherOutput) {
-    return { min: 10, max: 14, hardLimit: 16 };
+    return {
+      min: 10,
+      max: 16,
+      hardLimit: 22,
+      preferredCountHint: '该需求偏复杂且希望更丰富，组件数量可以明显增加。'
+    };
   }
 
   if (wantsComplexLayout) {
-    return { min: 8, max: 12, hardLimit: 14 };
+    return {
+      min: 8,
+      max: 14,
+      hardLimit: 20,
+      preferredCountHint: '该需求偏复杂，建议生成中等偏多组件。'
+    };
   }
 
   if (wantsRicherOutput) {
-    return { min: 7, max: 11, hardLimit: 14 };
+    return {
+      min: 7,
+      max: 13,
+      hardLimit: 18,
+      preferredCountHint: '用户希望更丰富，建议增加信息层级和辅助组件。'
+    };
   }
 
-  return { min: 6, max: 10, hardLimit: 12 };
+  return {
+    min: 4,
+    max: 10,
+    hardLimit: 14,
+    preferredCountHint: '若用户未指定数量，按需求复杂度自由决定组件数量。'
+  };
+};
+
+const summarizeThemeContext = (theme: ReturnType<typeof useForgeStore.getState>['theme']): string => {
+  return [
+    `primary=${theme.primary}`,
+    `secondary=${theme.secondary}`,
+    `background=${theme.background}`,
+    `foreground=${theme.foreground}`,
+    `muted=${theme.muted}`,
+    `destructive=${theme.destructive}`,
+    `radius=${theme.radius}px`,
+    `borderWidth=${theme.borderWidth ?? 1}px`
+  ].join(', ');
+};
+
+const inferPromptComponentHints = (prompt: string): string[] => {
+  const normalized = prompt.toLowerCase();
+  const aliases: Array<{ type: string; keywords: string[] }> = [
+    { type: 'Card', keywords: ['卡片', 'card'] },
+    { type: 'Input', keywords: ['输入框', 'input', '邮箱', '密码', '手机号'] },
+    { type: 'Button', keywords: ['按钮', 'button', '提交', '登录', '注册', '保存'] },
+    { type: 'Checkbox', keywords: ['复选', 'checkbox', '记住我', '同意协议'] },
+    { type: 'Select', keywords: ['下拉', 'select', '选择器'] },
+    { type: 'Textarea', keywords: ['文本域', 'textarea', '备注', '描述'] },
+    { type: 'Alert', keywords: ['提示', '告警', 'alert', 'warning'] },
+    { type: 'Badge', keywords: ['标签', 'badge', '状态'] },
+    { type: 'Tabs', keywords: ['tabs', '标签页', '选项卡'] },
+    { type: 'Table', keywords: ['表格', 'table', '列表'] },
+    { type: 'Progress', keywords: ['进度', 'progress'] },
+    { type: 'Dialog', keywords: ['弹窗', 'dialog', 'modal'] },
+    { type: 'DropdownMenu', keywords: ['菜单', 'dropdown'] },
+    { type: 'Avatar', keywords: ['头像', 'avatar', '用户'] },
+    { type: 'Separator', keywords: ['分隔', 'separator'] },
+    { type: 'Switch', keywords: ['开关', 'switch'] }
+  ];
+
+  return aliases
+    .filter((entry) => entry.keywords.some((keyword) => normalized.includes(keyword)))
+    .map((entry) => entry.type);
+};
+
+const applyVisualHierarchy = (items: ComponentItem[]): ComponentItem[] => {
+  let primaryAssigned = false;
+
+  return items.map((item) => {
+    if (item.type !== 'Button') return item;
+
+    const props = { ...item.props };
+    const text = String(props.children ?? '').toLowerCase();
+    const isSecondaryAction = /取消|返回|稍后|跳过|放弃|cancel|back|later|skip/.test(text);
+    const isDangerAction = /删除|移除|危险|作废|delete|remove|danger/.test(text);
+
+    if (isDangerAction) {
+      props.variant = 'destructive';
+    } else if (isSecondaryAction) {
+      props.variant = 'outline';
+    } else if (!primaryAssigned) {
+      props.variant = 'default';
+      primaryAssigned = true;
+    } else if (props.variant === undefined || props.variant === 'default') {
+      props.variant = 'secondary';
+    }
+
+    return { ...item, props };
+  });
+};
+
+const inferGenerationMode = (prompt: string): 'append' | 'replace' => {
+  const normalizedPrompt = prompt.trim().toLowerCase();
+  const replaceKeywords = [
+    '重做',
+    '重新做',
+    '清空',
+    '覆盖',
+    '替换',
+    '重置',
+    'from scratch',
+    'replace',
+    'reset',
+    'start over'
+  ];
+
+  return replaceKeywords.some((keyword) => normalizedPrompt.includes(keyword)) ? 'replace' : 'append';
+};
+
+const summarizeCanvasContext = (items: ComponentItem[]): string => {
+  if (items.length === 0) return '当前画布为空。';
+
+  const topLevelCount = items.filter((item) => !item.parentId).length;
+  const childCount = items.length - topLevelCount;
+  const typeCounter = items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.type] = (acc[item.type] || 0) + 1;
+    return acc;
+  }, {});
+
+  const topTypes = Object.entries(typeCounter)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([type, count]) => `${type}x${count}`)
+    .join(', ');
+
+  return `当前画布共有 ${items.length} 个组件（顶层 ${topLevelCount}，卡片子级 ${childCount}），主要类型：${topTypes || '无'}。`;
 };
 
 const extractJsonPayload = (raw: string): string => {
@@ -159,6 +310,53 @@ const normalizeGeneratedComponents = (raw: string): AIGeneratedComponent[] => {
   throw new Error('AI 返回的 JSON 结构不符合要求');
 };
 
+const sanitizeGeneratedItems = (raw: string, hardLimit: number): ComponentItem[] => {
+  const parsedItems = normalizeGeneratedComponents(raw).slice(0, hardLimit);
+  return parsedItems
+    .map(sanitizeGeneratedItem)
+    .filter((item): item is ComponentItem => item !== null);
+};
+
+const smartNestItemsIntoCard = (items: ComponentItem[], prompt: string): ComponentItem[] => {
+  if (items.length <= 2) return items;
+
+  const normalizedPrompt = prompt.trim().toLowerCase();
+  const wantsCardLayout = /卡片|card|登录|注册|表单|login|sign in|signup|form/.test(normalizedPrompt);
+  if (!wantsCardLayout) return items;
+
+  const cardItems = items.filter((item) => item.type === 'Card');
+  if (cardItems.length !== 1) return items;
+
+  const cardId = cardItems[0].id;
+  const cardIndex = items.findIndex((item) => item.id === cardId);
+  if (cardIndex === -1) return items;
+
+  let nestedCount = 0;
+  return items.map((item, index) => {
+    if (index <= cardIndex) return item;
+    if (item.type === 'Card') return item;
+
+    // 限制自动归组数量，避免一次嵌套过深
+    if (nestedCount >= 8) return item;
+
+    nestedCount += 1;
+    return { ...item, parentId: cardId };
+  });
+};
+
+const buildRepairPrompt = (raw: string, schemaForLLM: LLMComponentSchema[]): string => {
+  const rawSnippet = raw.length > 4000 ? `${raw.slice(0, 4000)}\n...` : raw;
+
+  return [
+    '请把下面这段 AI 输出修复为严格合法 JSON。',
+    '要求：只能输出 JSON 数组，不要 Markdown，不要解释。',
+    '每个元素格式：{"type": string, "props": object}。',
+    'type 必须来自以下 schema，props 只能使用对应组件的可用字段。',
+    `组件 schema：${JSON.stringify(schemaForLLM)}`,
+    `待修复内容：${rawSnippet}`
+  ].join('\n');
+};
+
 const sanitizeGeneratedItem = (item: AIGeneratedComponent): ComponentItem | null => {
   const config: RegistryEntry | undefined = COMPONENT_REGISTRY[item.type];
   if (!config) return null;
@@ -207,7 +405,7 @@ const getUserFacingError = (error: unknown): string => {
 };
 
 export const AIPrompt: React.FC = () => {
-  const { layout, appendComponents } = useForgeStore();
+  const { layout, theme, canvasItems, appendComponents, clearCanvas } = useForgeStore();
   const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [aiPromptText, setAiPromptText] = useState('');
   const [generationLanguage, setGenerationLanguage] = useState<AIGenerationLanguage>('zh-CN');
@@ -224,6 +422,10 @@ export const AIPrompt: React.FC = () => {
       const schemaForLLM = buildSchemaForLLM();
       const languageConfig = LANGUAGE_OPTIONS.find((option) => option.value === generationLanguage) || LANGUAGE_OPTIONS[0];
       const componentBudget = inferComponentBudget(aiPromptText);
+      const generationMode = inferGenerationMode(aiPromptText);
+      const canvasContext = summarizeCanvasContext(canvasItems);
+      const themeContext = summarizeThemeContext(theme);
+      const hintedTypes = inferPromptComponentHints(aiPromptText);
       const sysPrompt = [
         '你是一个专业的无代码 UI 工程师。',
         '你的任务是根据用户描述，生成一个由现有组件组成的界面草图。',
@@ -231,23 +433,48 @@ export const AIPrompt: React.FC = () => {
         '你只能使用下面 schema 中存在的组件 type，并且 props 只能使用 availableProps 或 propSchema 中定义的字段。',
         '输出必须是严格合法的 JSON 数组，不要返回 Markdown、注释、解释或代码块。',
         '每个数组元素格式必须是 {"type": string, "props": object}。',
-        `本次优先生成更完整的界面，不要只输出最小可用结构。目标组件数量为 ${componentBudget.min} 到 ${componentBudget.max} 个。`,
+        `组件数量策略：优先在 ${componentBudget.min} 到 ${componentBudget.max} 个范围内，但可根据需求复杂度动态增减，最大不超过 ${componentBudget.hardLimit}。`,
+        componentBudget.preferredCountHint,
         '如果是登录、注册、表单、结算、后台等界面，优先补齐标题、说明、输入项、状态项、分隔元素和次级操作。',
         '除非用户明确要求极简，否则尽量让结构更丰富一些。',
+        hintedTypes.length > 0
+          ? `用户提示词明显指向这些组件类型，优先覆盖：${hintedTypes.join(', ')}。`
+          : '若用户提示词未明确组件类型，请按场景自动选择最合适的组件组合。',
+        generationMode === 'append'
+          ? '生成结果应与当前画布兼容，尽量补充而不是重复已有结构。'
+          : '用户希望重做当前画布，请生成一套完整可替换的新结构。',
+        `当前画布上下文：${canvasContext}`,
+        `当前主题设计 token：${themeContext}`,
+        '视觉层级规则：每个核心区域只保留一个主操作按钮（Button variant=default），次要动作使用 outline 或 secondary，危险动作使用 destructive。',
+        '文案层级规则：标题短而明确，描述用于解释下一步，按钮文案使用动词开头，提示文案简洁且可执行。',
+        '色彩一致性规则：强调信息（如主按钮/关键状态）优先对应 primary 语义，说明信息优先对应 muted 语义。',
         '字段约束：Button 文本放到 children；Card 文本放到 title 和 description；Badge 文本放到 text；Alert 文本放到 title 和 description。',
         `当前可用组件 schema：${JSON.stringify(schemaForLLM)}`,
         `示例输出：${languageConfig.example}`
       ].join('\n');
-      
-      const jsonStr = await fetchAI(aiPromptText, sysPrompt, "application/json");
-      if (!jsonStr) throw new Error("空响应");
-      
-      const parsedItems = normalizeGeneratedComponents(jsonStr).slice(0, componentBudget.hardLimit);
-      const validItems = parsedItems
-        .map(sanitizeGeneratedItem)
-        .filter((item): item is ComponentItem => item !== null);
+
+      const jsonStr = await fetchAI(aiPromptText, sysPrompt, 'application/json');
+      if (!jsonStr) throw new Error('空响应');
+
+      let validItems: ComponentItem[] = [];
+      try {
+        validItems = sanitizeGeneratedItems(jsonStr, componentBudget.hardLimit);
+      } catch {
+        const repaired = await fetchAI(
+          buildRepairPrompt(jsonStr, schemaForLLM),
+          '你是严格的 JSON 修复器，只输出合法 JSON 数组。',
+          'application/json'
+        );
+        validItems = sanitizeGeneratedItems(repaired, componentBudget.hardLimit);
+      }
+
+      validItems = smartNestItemsIntoCard(validItems, aiPromptText);
+      validItems = applyVisualHierarchy(validItems);
 
       if (validItems.length > 0) {
+        if (generationMode === 'replace') {
+          clearCanvas();
+        }
         appendComponents(validItems);
         setAiPromptText('');
         setShowAiPrompt(false);
