@@ -99,8 +99,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({ activeTab, setActiveTab }) => 
             </button>
           </div>
 
-          <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-
           {/* Undo/Redo */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-inner">
             <button 

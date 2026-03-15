@@ -39,6 +39,7 @@ const App: React.FC = () => {
 
 const Footer: React.FC = () => {
   const { layout, history, historyStep, canvasItems, clearCanvas } = useForgeStore();
+  const canClear = canvasItems.length > 0;
 
   return (
     <footer 
@@ -54,10 +55,16 @@ const Footer: React.FC = () => {
       </div>
       <div className="flex gap-4">
         <button 
-          onClick={clearCanvas} 
-          className="hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          onClick={() => {
+            if (!canClear) return;
+            if (window.confirm('确认要清空画布吗？此操作可通过撤销恢复。')) {
+              clearCanvas();
+            }
+          }}
+          disabled={!canClear}
+          className="rounded-md border border-red-200 bg-red-50 px-3 py-1 text-red-600 shadow-sm transition-colors hover:bg-red-100 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60"
         >
-          Clear Canvas
+          清空画布
         </button>
       </div>
     </footer>
