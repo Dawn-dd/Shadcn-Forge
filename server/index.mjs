@@ -51,8 +51,8 @@ const normalizeProvider = (provider) => {
 };
 
 const inferProvider = () => {
-  if (process.env.AI_PROVIDER) {
-    return normalizeProvider(process.env.AI_PROVIDER);
+  if (process.env.AI_PROVIDER || process.env.VITE_AI_PROVIDER) {
+    return normalizeProvider(process.env.AI_PROVIDER || process.env.VITE_AI_PROVIDER);
   }
 
   const configuredModel = process.env.AI_MODEL || process.env.VITE_AI_MODEL || process.env.VITE_GEMINI_MODEL || '';
@@ -65,7 +65,13 @@ const inferProvider = () => {
     return 'deepseek';
   }
 
-  if (process.env.AI_BASE_URL || process.env.AI_API_KEY || process.env.OPENAI_API_KEY) {
+  if (
+    process.env.AI_BASE_URL ||
+    process.env.VITE_AI_BASE_URL ||
+    process.env.AI_API_KEY ||
+    process.env.VITE_AI_API_KEY ||
+    process.env.OPENAI_API_KEY
+  ) {
     return 'openai-compatible';
   }
 
@@ -76,18 +82,18 @@ const PROVIDER = inferProvider();
 
 const resolveApiKey = (provider) => {
   if (provider === 'qwen') {
-    return process.env.AI_API_KEY || process.env.DASHSCOPE_API_KEY || '';
+    return process.env.AI_API_KEY || process.env.VITE_AI_API_KEY || process.env.DASHSCOPE_API_KEY || '';
   }
 
   if (provider === 'deepseek') {
-    return process.env.AI_API_KEY || process.env.DEEPSEEK_API_KEY || '';
+    return process.env.AI_API_KEY || process.env.VITE_AI_API_KEY || process.env.DEEPSEEK_API_KEY || '';
   }
 
   if (provider === 'openai-compatible') {
-    return process.env.AI_API_KEY || process.env.OPENAI_API_KEY || '';
+    return process.env.AI_API_KEY || process.env.VITE_AI_API_KEY || process.env.OPENAI_API_KEY || '';
   }
 
-  return process.env.AI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+  return process.env.AI_API_KEY || process.env.VITE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 };
 
 const resolveDefaultModel = (provider) => {
@@ -107,7 +113,7 @@ const resolveDefaultModel = (provider) => {
 };
 
 const resolveBaseUrl = (provider) => {
-  const configuredBaseUrl = process.env.AI_BASE_URL || process.env.OPENAI_BASE_URL;
+  const configuredBaseUrl = process.env.AI_BASE_URL || process.env.VITE_AI_BASE_URL || process.env.OPENAI_BASE_URL;
   if (configuredBaseUrl) {
     return configuredBaseUrl.replace(/\/+$/, '');
   }
@@ -302,7 +308,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (!API_KEY) {
-    sendJson(res, 500, { error: { message: `API key for provider ${PROVIDER} is not configured on the server` } });
+    sendJson(res, 500, {
+      error: {
+        message:
+          `API key for provider ${PROVIDER} is not configured on the server. ` +
+          `Please set AI_API_KEY (or VITE_AI_API_KEY) and AI_PROVIDER in your deployment environment.`
+      }
+    });
     return;
   }
 
