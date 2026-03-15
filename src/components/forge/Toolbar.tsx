@@ -1,12 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { 
   MousePointer2, Terminal, Code2, Edit3, Play, 
-  Undo2, Redo2, Sun, Moon, Smartphone, Tablet, Monitor, Upload, Download
+  Undo2, Redo2, Sun, Moon, Upload, Download
 } from 'lucide-react';
 import { useForgeStore } from '@/store/forgeStore';
 import { TabButton } from '@/components/shared/TabButton';
 import { AIPrompt } from '@/components/forge/AIPrompt';
-import { PreviewViewport, ComponentItem } from '@/types';
+import { ComponentItem } from '@/types';
 import { generateProjectStructure } from '@/lib/codeGenerator';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -38,8 +38,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({ activeTab, setActiveTab }) => 
     history,
     isPreviewMode,
     togglePreviewMode,
-    previewViewport,
-    setPreviewViewport,
     loadFromSnapshot
   } = useForgeStore();
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -48,11 +46,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({ activeTab, setActiveTab }) => 
   const canUndo = historyStep > 0;
   const canRedo = historyStep < history.length - 1;
 
-  const VIEWPORT_OPTIONS: Array<{ value: PreviewViewport; icon: React.ReactNode; label: string }> = [
-    { value: 'mobile', icon: <Smartphone size={13} />, label: '手机' },
-    { value: 'tablet', icon: <Tablet size={13} />, label: '平板' },
-    { value: 'desktop', icon: <Monitor size={13} />, label: '桌面' },
-  ];
 
   const handleExportZip = async () => {
     try {
@@ -253,23 +246,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ activeTab, setActiveTab }) => 
             </button>
           </div>
 
-          {/* Viewport toggle */}
-          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-inner hidden sm:flex">
-            {VIEWPORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setPreviewViewport(opt.value)}
-                title={opt.label}
-                className={`p-1.5 rounded-md transition-all ${
-                  previewViewport === opt.value
-                    ? 'bg-white text-indigo-600 shadow dark:bg-slate-700 dark:text-indigo-400'
-                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                }`}
-              >
-                {opt.icon}
-              </button>
-            ))}
-          </div>
+          {/* Viewport toggle removed for single-layout design */}
 
           {/* Dark Mode Toggle */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-inner hidden sm:flex">
