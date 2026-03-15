@@ -472,3 +472,7 @@ export function generateProjectStructure(items: ComponentItem[], theme: Theme, s
 
   return files;
 }
+
+export function generateComponentJSXSnippet(item: ComponentItem, theme: Theme, styleMode: StyleMode = 'inline'): string {
+  return generateComponentJSX(item, 0, theme, styleMode).trim();
+}

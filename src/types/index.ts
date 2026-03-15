@@ -78,13 +78,17 @@ export interface ComponentConfig {
   render: (props: Record<string, unknown>, theme?: Theme, layout?: Layout, item?: ComponentItem) => React.ReactNode;
 }
 
+export type PreviewViewport = 'mobile' | 'tablet' | 'desktop';
+
 export interface ForgeStore {
   isDarkMode: boolean;
   theme: Theme;
   layout: Layout;
   canvasItems: ComponentItem[];
   activeComponentId: string | null;
+  selectedComponentIds: string[];
   isPreviewMode: boolean;
+  previewViewport: PreviewViewport;
   history: ComponentItem[][];
   historyStep: number;
   aiSessionLog: AISessionEntry[];
@@ -92,6 +96,7 @@ export interface ForgeStore {
   _saveHistory: (newItems: ComponentItem[]) => { canvasItems: ComponentItem[]; history: ComponentItem[][]; historyStep: number };
   toggleDarkMode: () => void;
   togglePreviewMode: () => void;
+  setPreviewViewport: (viewport: PreviewViewport) => void;
   updateTheme: (updates: Partial<Theme>) => void;  
   applyPreset: (presetName: string) => void;
   updateLayout: (updates: Partial<Layout>) => void;
@@ -113,6 +118,15 @@ export interface ForgeStore {
   undo: () => void;
   redo: () => void;
   setActiveComponentId: (id: string | null) => void;
+  setSelectedComponentIds: (ids: string[]) => void;
+  toggleSelectedComponentId: (id: string) => void;
+  clearSelection: () => void;
+  removeSelectedComponents: () => void;
+  loadFromSnapshot: (payload: {
+    canvasItems: ComponentItem[];
+    theme?: Partial<Theme>;
+    layout?: Partial<Layout>;
+  }) => void;
   clearCanvas: () => void;
   resetAll: () => void;
 }

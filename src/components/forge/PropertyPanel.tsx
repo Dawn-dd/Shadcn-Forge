@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { SlidersHorizontal, Code2, X, Sparkles, Loader2, ChevronDown, Maximize2 } from 'lucide-react';
+import { SlidersHorizontal, Code2, X, Sparkles, Loader2, ChevronDown, Maximize2, Copy, Check } from 'lucide-react';
 import { useForgeStore } from '@/store/forgeStore';
 import { COMPONENT_REGISTRY } from '@/config/components';
 import { fetchAI } from '@/lib/ai';
 import { ComponentItem, PropSchema, AIGeneratedComponent, Theme, Layout } from '@/types';
 import { generateId } from '@/lib/utils';
+import { generateComponentJSXSnippet } from '@/lib/codeGenerator';
 
 type LocalRewriteMode = 'copy' | 'structure' | 'both';
 
@@ -19,6 +20,13 @@ interface LocalRewritePayload {
   targetProps?: Record<string, unknown>;
   children?: AIGeneratedComponent[];
   candidates?: LocalRewriteCandidate[];
+}
+
+interface PropDiffEntry {
+  key: string;
+  before: unknown;
+  after: unknown;
+  changed: boolean;
 }
 
 const LOCAL_REWRITE_MODE_OPTIONS: Array<{ value: LocalRewriteMode; label: string }> = [
@@ -222,7 +230,79 @@ const renderComponentPreview = (
 
 const PREVIEW_SCALE = 0.62;
 
-const getCandidateDiffSummary = (activeComponent: ComponentItem, candidate: LocalRewriteCandidate): string[] => {
+const formatDiffValue = (value: unknown): string => {
+  if (value === undefined) return '未设置';
+  if (value === null) return 'null';
+  if (typeof value === 'string') return value || '空字符串';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+
+  try {
+    const serialized = JSON.stringify(value);
+    return serialized.length > 80 ? `${serialized.slice(0, 80)}...` : serialized;
+  } catch {
+    return String(value);
+  }
+};
+
+const getPropDiffEntries = (activeComponent: ComponentItem, candidate: LocalRewriteCandidate): PropDiffEntry[] => {
+  const nextProps = sanitizePropsForType(activeComponent.type, candidate.targetProps);
+  const keys = Array.from(new Set([...Object.keys(activeComponent.props), ...Object.keys(nextProps)]));
+
+  return keys
+    .map((key) => ({
+      key,
+      before: activeComponent.props[key],
+      after: nextProps[key],
+      changed: activeComponent.props[key] !== nextProps[key]
+    }))
+    .sort((a, b) => Number(b.changed) - Number(a.changed));
+};
+
+const getCardStructureDiff = (currentChildren: ComponentItem[], candidateChildren?: AIGeneratedComponent[]) => {
+  if (!candidateChildren) {
+    return {
+      changed: false,
+      lines: ['未调整子组件结构']
+    };
+  }
+
+  const currentTypes = currentChildren.map((child) => child.type);
+  const nextTypes = candidateChildren.map((child) => child.type);
+  const lines: string[] = [];
+
+  if (currentTypes.length !== nextTypes.length) {
+    lines.push(`数量：${currentTypes.length} → ${nextTypes.length}`);
+  }
+
+  const currentTypeSet = new Set(currentTypes);
+  const nextTypeSet = new Set(nextTypes);
+
+  const addedTypes = Array.from(nextTypeSet).filter((type) => !currentTypeSet.has(type));
+  const removedTypes = Array.from(currentTypeSet).filter((type) => !nextTypeSet.has(type));
+
+  if (addedTypes.length > 0) {
+    lines.push(`新增类型：${addedTypes.join('、')}`);
+  }
+
+  if (removedTypes.length > 0) {
+    lines.push(`移除类型：${removedTypes.join('、')}`);
+  }
+
+  if (lines.length === 0) {
+    lines.push('结构无明显变化（可能仅调整了 props）');
+  }
+
+  return {
+    changed: lines.some((line) => !line.includes('无明显变化') && !line.includes('未调整')),
+    lines
+  };
+};
+
+const getCandidateDiffSummary = (
+  activeComponent: ComponentItem,
+  candidate: LocalRewriteCandidate,
+  currentChildCount: number = 0
+): string[] => {
   const nextProps = sanitizePropsForType(activeComponent.type, candidate.targetProps);
   const changedKeys = Object.keys(nextProps).filter((key) => activeComponent.props[key] !== nextProps[key]);
   const summary: string[] = [];
@@ -232,7 +312,6 @@ const getCandidateDiffSummary = (activeComponent: ComponentItem, candidate: Loca
   }
 
   if (activeComponent.type === 'Card') {
-    const currentChildCount = 0;
     const nextChildCount = candidate.children?.length ?? 0;
 
     if (candidate.children && nextChildCount !== currentChildCount) {
@@ -279,6 +358,7 @@ export const PropertyPanel: React.FC = () => {
   const [candidateFollowupPrompt, setCandidateFollowupPrompt] = useState('');
   const [candidateFollowupLoading, setCandidateFollowupLoading] = useState(false);
   const [candidateFollowupError, setCandidateFollowupError] = useState<string | null>(null);
+  const [copiedJSX, setCopiedJSX] = useState(false);
 
   const activeComponent = canvasItems.find((item) => item.id === activeComponentId);
 
@@ -304,6 +384,13 @@ export const PropertyPanel: React.FC = () => {
   if (!activeComponent) return null;
 
   const currentCardChildren = canvasItems.filter((item) => item.parentId === activeComponent.id);
+  const previewCandidate = previewCandidateIndex !== null ? localAiCandidates[previewCandidateIndex] : null;
+  const propDiffEntries = previewCandidate ? getPropDiffEntries(activeComponent, previewCandidate) : [];
+  const changedPropCount = propDiffEntries.filter((entry) => entry.changed).length;
+  const cardStructureDiff =
+    activeComponent.type === 'Card' && previewCandidate
+      ? getCardStructureDiff(currentCardChildren, previewCandidate.children)
+      : null;
 
   const applyLocalCandidate = (candidate: LocalRewriteCandidate) => {
     const targetProps = sanitizePropsForType(activeComponent.type, candidate.targetProps);
@@ -323,6 +410,18 @@ export const PropertyPanel: React.FC = () => {
     setLocalAiPrompt('');
     setFocusedCandidateIndex(null);
     setPreviewCandidateIndex(null);
+  };
+
+  const handleCopyComponentJSX = async () => {
+    try {
+      const snippet = generateComponentJSXSnippet(activeComponent, theme);
+      await navigator.clipboard.writeText(snippet);
+      setCopiedJSX(true);
+      setTimeout(() => setCopiedJSX(false), 1500);
+    } catch (error) {
+      console.error('Copy JSX failed', error);
+      setCopiedJSX(false);
+    }
   };
 
   const handleLocalAIRewrite = async () => {
@@ -483,12 +582,23 @@ export const PropertyPanel: React.FC = () => {
           <SlidersHorizontal size={16} />
           {COMPONENT_REGISTRY[activeComponent.type].name}
         </div>
-        <button
-          onClick={() => setActiveComponentId(null)}
-          className="text-slate-400 hover:text-slate-800 dark:hover:text-white p-1 rounded-md"
-        >
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleCopyComponentJSX}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold text-indigo-600 transition-colors hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-900/30"
+            title="复制当前组件 JSX"
+          >
+            {copiedJSX ? <Check size={12} /> : <Copy size={12} />}
+            {copiedJSX ? '已复制' : '复制 JSX'}
+          </button>
+          <button
+            onClick={() => setActiveComponentId(null)}
+            className="text-slate-400 hover:text-slate-800 dark:hover:text-white p-1 rounded-md"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Props Editor */}
@@ -553,14 +663,22 @@ export const PropertyPanel: React.FC = () => {
               {localAiCandidates.length > 0 && (
                 <div className="space-y-3 pt-1">
                   {localAiCandidates.map((candidate, index) => (
-                    <button
+                    <div
                       key={`${candidate.summary || 'candidate'}-${index}`}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         setFocusedCandidateIndex(index);
                         setPreviewCandidateIndex(index);
                       }}
-                      className={`group block w-full rounded-2xl border bg-white/80 p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg dark:bg-slate-900/70 ${
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setFocusedCandidateIndex(index);
+                          setPreviewCandidateIndex(index);
+                        }
+                      }}
+                      className={`group block w-full cursor-pointer rounded-2xl border bg-white/80 p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg dark:bg-slate-900/70 ${
                         focusedCandidateIndex === index
                           ? 'border-purple-500 ring-2 ring-purple-500/20 dark:border-purple-400'
                           : 'border-purple-200 hover:border-purple-400 dark:border-purple-900/40'
@@ -606,26 +724,34 @@ export const PropertyPanel: React.FC = () => {
                               {activeComponent.type === 'Card' && candidate.children ? `，子组件 ${candidate.children.length} 个` : ''}
                             </div>
                             <div className="mt-2 space-y-1">
-                              {getCandidateDiffSummary(activeComponent, candidate).map((line) => (
+                              {getCandidateDiffSummary(activeComponent, candidate, currentCardChildren.length).map((line) => (
                                 <div key={line} className="text-[10px] leading-4 text-slate-500 dark:text-slate-400">
                                   {line}
                                 </div>
                               ))}
                             </div>
                           </div>
-                          <button
-                            type="button"
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={(event) => {
                               event.stopPropagation();
                               applyLocalCandidate(candidate);
                             }}
-                            className="shrink-0 rounded-xl bg-purple-600 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-purple-700"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                applyLocalCandidate(candidate);
+                              }
+                            }}
+                            className="shrink-0 cursor-pointer rounded-xl bg-purple-600 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-purple-700"
                           >
                             应用
-                          </button>
+                          </div>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -788,7 +914,7 @@ export const PropertyPanel: React.FC = () => {
         </div>
       </div>
 
-      {previewCandidateIndex !== null && localAiCandidates[previewCandidateIndex] && (
+      {previewCandidate && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" onClick={() => setPreviewCandidateIndex(null)}>
           <div
             className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
@@ -797,10 +923,10 @@ export const PropertyPanel: React.FC = () => {
             <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-widest text-purple-500">
-                  方案 {previewCandidateIndex + 1}
+                  方案 {(previewCandidateIndex ?? 0) + 1}
                 </div>
                 <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  {localAiCandidates[previewCandidateIndex].summary || '局部重构候选方案'}
+                  {previewCandidate.summary || '局部重构候选方案'}
                 </div>
               </div>
               <button
@@ -842,25 +968,84 @@ export const PropertyPanel: React.FC = () => {
                 style={{ backgroundColor: theme.workspaceBg ?? theme.muted }}
               >
                 {previewCompareMode ? (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">变更点</span>
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                        props 变化 {changedPropCount}
+                      </span>
+                      {activeComponent.type === 'Card' && cardStructureDiff && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            cardStructureDiff.changed
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300'
+                          }`}
+                        >
+                          {cardStructureDiff.changed ? '结构已调整' : '结构基本不变'}
+                        </span>
+                      )}
+                    </div>
+
+                    {activeComponent.type === 'Card' && cardStructureDiff && (
+                      <div className="space-y-1 rounded-2xl border border-purple-200 bg-purple-50/60 p-3 dark:border-purple-900/40 dark:bg-purple-900/20">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-purple-500">结构对比</div>
+                        {cardStructureDiff.lines.map((line) => (
+                          <div key={line} className="text-xs leading-5 text-slate-600 dark:text-slate-300">{line}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="rounded-2xl border border-amber-200 bg-white p-4 dark:border-amber-900/40 dark:bg-slate-950">
                       <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">当前</div>
                       {renderComponentPreview(activeComponent, theme, layout, currentCardChildren)}
+                      <div className="mt-3 space-y-1">
+                        {propDiffEntries.slice(0, 8).map((entry) => (
+                          <div
+                            key={`current-${entry.key}`}
+                            className={`grid grid-cols-[90px_1fr] items-start gap-2 rounded-lg px-2 py-1.5 text-[10px] ${
+                              entry.changed
+                                ? 'bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200'
+                                : 'bg-slate-50 text-slate-500 dark:bg-slate-900 dark:text-slate-400'
+                            }`}
+                          >
+                            <div className="truncate font-semibold">{entry.key}</div>
+                            <div className="truncate">{formatDiffValue(entry.before)}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-purple-200 bg-white p-4 dark:border-purple-900/40 dark:bg-slate-950">
                       <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-purple-500">方案</div>
-                      {renderLocalCandidatePreview(activeComponent, localAiCandidates[previewCandidateIndex], theme, layout)}
+                      {renderLocalCandidatePreview(activeComponent, previewCandidate, theme, layout)}
+                      <div className="mt-3 space-y-1">
+                        {propDiffEntries.slice(0, 8).map((entry) => (
+                          <div
+                            key={`candidate-${entry.key}`}
+                            className={`grid grid-cols-[90px_1fr] items-start gap-2 rounded-lg px-2 py-1.5 text-[10px] ${
+                              entry.changed
+                                ? 'bg-purple-50 text-purple-800 dark:bg-purple-900/20 dark:text-purple-200'
+                                : 'bg-slate-50 text-slate-500 dark:bg-slate-900 dark:text-slate-400'
+                            }`}
+                          >
+                            <div className="truncate font-semibold">{entry.key}</div>
+                            <div className="truncate">{formatDiffValue(entry.after)}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                  </div>
                 ) : (
-                  renderLocalCandidatePreview(activeComponent, localAiCandidates[previewCandidateIndex], theme, layout)
+                  renderLocalCandidatePreview(activeComponent, previewCandidate, theme, layout)
                 )}
               </div>
               <div className="mt-4 space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   变化摘要
                 </div>
-                {getCandidateDiffSummary(activeComponent, localAiCandidates[previewCandidateIndex]).map((line) => (
+                {getCandidateDiffSummary(activeComponent, previewCandidate, currentCardChildren.length).map((line) => (
                   <div key={line} className="text-xs leading-5 text-slate-600 dark:text-slate-300">
                     {line}
                   </div>
@@ -893,8 +1078,8 @@ export const PropertyPanel: React.FC = () => {
             </div>
             <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
               <div className="text-[11px] leading-5 text-slate-500 dark:text-slate-400">
-                props {Object.keys(localAiCandidates[previewCandidateIndex].targetProps || {}).length} 项
-                {activeComponent.type === 'Card' && localAiCandidates[previewCandidateIndex].children ? `，子组件 ${localAiCandidates[previewCandidateIndex].children!.length} 个` : ''}
+                props {Object.keys(previewCandidate.targetProps || {}).length} 项
+                {activeComponent.type === 'Card' && previewCandidate.children ? `，子组件 ${previewCandidate.children.length} 个` : ''}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -906,7 +1091,7 @@ export const PropertyPanel: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => applyLocalCandidate(localAiCandidates[previewCandidateIndex])}
+                  onClick={() => applyLocalCandidate(previewCandidate)}
                   className="rounded-xl bg-purple-600 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-purple-700"
                 >
                   应用

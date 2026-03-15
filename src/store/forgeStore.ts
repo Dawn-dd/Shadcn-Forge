@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ForgeStore, ComponentItem } from '@/types';
+import { ForgeStore, ComponentItem, PreviewViewport } from '@/types';
 import { THEME_PRESETS } from '@/config/themes';
 import { COMPONENT_REGISTRY } from '@/config/components';
 import { generateId } from '@/lib/utils';
@@ -37,7 +37,9 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
   layout: DEFAULT_LAYOUT,
   canvasItems: INITIAL_ITEMS,
   activeComponentId: null,
+  selectedComponentIds: [],
   isPreviewMode: false,
+  previewViewport: 'desktop' as PreviewViewport,
   history: [INITIAL_ITEMS],
   historyStep: 0,
   aiSessionLog: [],
@@ -76,8 +78,11 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
   togglePreviewMode: () =>
     set((state) => ({
       isPreviewMode: !state.isPreviewMode,
-      activeComponentId: null
+      activeComponentId: null,
+      selectedComponentIds: []
     })),
+
+  setPreviewViewport: (viewport) => set({ previewViewport: viewport }),
 
   updateTheme: (updates) =>
     set((state) => ({
@@ -114,7 +119,8 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
       const newItems = [...state.canvasItems, newItem];
       return {
         ...state._saveHistory(newItems),
-        activeComponentId: newItem.id
+        activeComponentId: newItem.id,
+        selectedComponentIds: [newItem.id]
       };
     }),
 
@@ -142,7 +148,8 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
 
       return {
         ...state._saveHistory(items),
-        activeComponentId: newItem.id
+        activeComponentId: newItem.id,
+        selectedComponentIds: [newItem.id]
       };
     }),
     
@@ -198,7 +205,8 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
         activeComponentId:
           state.activeComponentId && descendantIds.has(state.activeComponentId)
             ? null
-            : state.activeComponentId
+            : state.activeComponentId,
+        selectedComponentIds: state.selectedComponentIds.filter((selectedId) => !descendantIds.has(selectedId))
       };
     }),
 
@@ -220,7 +228,8 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
 
       return {
         ...state._saveHistory(newItems),
-        activeComponentId: newItem.id
+        activeComponentId: newItem.id,
+        selectedComponentIds: [newItem.id]
       };
     }),
 
@@ -277,7 +286,8 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
 
       return {
         ...state._saveHistory(items),
-        activeComponentId: newItem.id
+        activeComponentId: newItem.id,
+        selectedComponentIds: [newItem.id]
       };
     }),
 
@@ -348,7 +358,8 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
 
       return {
         ...state._saveHistory(retainedItems),
-        activeComponentId: cardId
+        activeComponentId: cardId,
+        selectedComponentIds: [cardId]
       };
     }),
 
@@ -366,7 +377,8 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
           historyStep: state.historyStep - 1,
           canvasItems: state.history[state.historyStep - 1],
           // 撤销时重置选中状态，防止属性面板读取幽灵组件报错
-          activeComponentId: null
+          activeComponentId: null,
+          selectedComponentIds: []
         };
       }
       return state;
@@ -379,18 +391,87 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
           historyStep: state.historyStep + 1,
           canvasItems: state.history[state.historyStep + 1],
           // 重做时重置选中状态
-          activeComponentId: null
+          activeComponentId: null,
+          selectedComponentIds: []
         };
       }
       return state;
     }),
 
-  setActiveComponentId: (id) => set({ activeComponentId: id }),
+  setActiveComponentId: (id) =>
+    set({
+      activeComponentId: id,
+      selectedComponentIds: id ? [id] : []
+    }),
+
+  setSelectedComponentIds: (ids) =>
+    set((state) => ({
+      selectedComponentIds: ids,
+      activeComponentId: ids.length > 0 ? state.activeComponentId && ids.includes(state.activeComponentId) ? state.activeComponentId : ids[ids.length - 1] : null
+    })),
+
+  toggleSelectedComponentId: (id) =>
+    set((state) => {
+      const exists = state.selectedComponentIds.includes(id);
+      const nextIds = exists
+        ? state.selectedComponentIds.filter((selectedId) => selectedId !== id)
+        : [...state.selectedComponentIds, id];
+
+      return {
+        selectedComponentIds: nextIds,
+        activeComponentId: nextIds.length > 0 ? (exists ? nextIds[nextIds.length - 1] : id) : null
+      };
+    }),
+
+  clearSelection: () => set({ activeComponentId: null, selectedComponentIds: [] }),
+
+  removeSelectedComponents: () =>
+    set((state) => {
+      const selectedIds = state.selectedComponentIds;
+      if (selectedIds.length === 0) return state;
+
+      const descendantIds = new Set<string>();
+      const queue = [...selectedIds];
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        descendantIds.add(currentId);
+
+        state.canvasItems.forEach((item) => {
+          if (item.parentId === currentId && !descendantIds.has(item.id)) {
+            queue.push(item.id);
+          }
+        });
+      }
+
+      const newItems = state.canvasItems.filter((item) => !descendantIds.has(item.id));
+      return {
+        ...state._saveHistory(newItems),
+        activeComponentId: null,
+        selectedComponentIds: []
+      };
+    }),
+
+  loadFromSnapshot: (payload) =>
+    set((state) => {
+      const restoredItems = Array.isArray(payload.canvasItems) ? payload.canvasItems : [];
+
+      return {
+        canvasItems: restoredItems,
+        history: [JSON.parse(JSON.stringify(restoredItems))],
+        historyStep: 0,
+        activeComponentId: null,
+        selectedComponentIds: [],
+        theme: payload.theme ? { ...state.theme, ...payload.theme } : state.theme,
+        layout: payload.layout ? { ...state.layout, ...payload.layout } : state.layout
+      };
+    }),
 
   clearCanvas: () =>
     set((state) => ({
       ...state._saveHistory([]),
-      activeComponentId: null
+      activeComponentId: null,
+      selectedComponentIds: []
     })),
 
   resetAll: () =>
@@ -402,6 +483,7 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
       historyStep: 0,
       aiSessionLog: [],
       activeComponentId: null,
+      selectedComponentIds: [],
       isPreviewMode: false,
       isDarkMode: false
     })
@@ -425,7 +507,9 @@ export const useForgeStore = create<ForgeStore>()(persist((set, get) => ({
       history: [JSON.parse(JSON.stringify(restoredCanvasItems))],
       historyStep: 0,
       activeComponentId: null,
-      isPreviewMode: false
+      selectedComponentIds: [],
+      isPreviewMode: false,
+      previewViewport: 'desktop' as PreviewViewport
     } as ForgeStore;
   }
 }));

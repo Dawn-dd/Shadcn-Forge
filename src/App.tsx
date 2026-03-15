@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Toolbar } from '@/components/forge/Toolbar';
 import { Sidebar } from '@/components/forge/Sidebar';
 import { Canvas } from '@/components/forge/Canvas';
@@ -8,6 +8,71 @@ import { useForgeStore } from '@/store/forgeStore';
 const App: React.FC = () => {
   const { isDarkMode, layout } = useForgeStore();
   const [activeTab, setActiveTab] = useState<'design' | 'inspect' | 'export'>('design');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // ── 全局键盘快捷键 ──────────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 如果用户正在输入框/textarea 里，跳过
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return;
+
+      const {
+        activeComponentId,
+        selectedComponentIds,
+        removeComponent,
+        removeSelectedComponents,
+        duplicateComponent,
+        undo,
+        redo,
+        clearSelection
+      } = useForgeStore.getState();
+
+      // Delete / Backspace → 删除选中组件
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (activeComponentId || selectedComponentIds.length > 0)) {
+        e.preventDefault();
+        if (selectedComponentIds.length > 1) {
+          removeSelectedComponents();
+        } else if (activeComponentId) {
+          removeComponent(activeComponentId);
+        }
+        return;
+      }
+
+      // Ctrl/Cmd + D → 复制选中组件
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && activeComponentId) {
+        e.preventDefault();
+        duplicateComponent(activeComponentId);
+        return;
+      }
+
+      // Ctrl/Cmd + Z → 撤销
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        undo();
+        return;
+      }
+
+      // Ctrl/Cmd + Shift + Z  或  Ctrl/Cmd + Y → 重做
+      if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') ||
+          ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
+        e.preventDefault();
+        redo();
+        return;
+      }
+
+      // Escape → 取消选中
+      if (e.key === 'Escape' && (activeComponentId || selectedComponentIds.length > 0)) {
+        e.preventDefault();
+        clearSelection();
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  // ───────────────────────────────────────────────────────────────
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
@@ -16,7 +81,7 @@ const App: React.FC = () => {
         style={{ backgroundColor: layout.appBg }}
       >
         {/* 左侧边栏 */}
-        <Sidebar />
+        <Sidebar collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((prev) => !prev)} />
 
         {/* 主内容区 */}
         <main className="flex-1 flex flex-col relative overflow-hidden transition-colors duration-300">
@@ -53,7 +118,17 @@ const Footer: React.FC = () => {
         </span>
         <span>Components: {canvasItems.length}</span>
       </div>
-      <div className="flex gap-4">
+      <div className="flex items-center gap-4">
+        <span className="hidden md:flex items-center gap-3 text-slate-400 normal-case tracking-normal font-medium">
+          <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-mono">Del</kbd>
+          <span className="text-[9px]">删除</span>
+          <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-mono">⌃D</kbd>
+          <span className="text-[9px]">复制</span>
+          <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-mono">⌃Z</kbd>
+          <span className="text-[9px]">撤销</span>
+          <kbd className="rounded border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[9px] font-mono">Esc</kbd>
+          <span className="text-[9px]">取消选中</span>
+        </span>
         <button 
           onClick={() => {
             if (!canClear) return;

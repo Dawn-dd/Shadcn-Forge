@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useForgeStore } from '@/store/forgeStore';
 import { COMPONENT_REGISTRY } from '@/config/components';
 import { Trash2, Copy, GripVertical, MoveUp, MoveDown, Sparkles, Plus } from 'lucide-react';
 import { Theme, Layout } from '@/types';
 
+interface ContextMenuState {
+  x: number;
+  y: number;
+  itemId: string;
+}
+
 export const DesignView: React.FC = () => {
   const {
     canvasItems,
     activeComponentId,
+    selectedComponentIds,
     setActiveComponentId,
+    setSelectedComponentIds,
+    toggleSelectedComponentId,
+    clearSelection,
+    removeSelectedComponents,
     removeComponent,
     duplicateComponent,
     moveComponent,
@@ -24,8 +35,17 @@ export const DesignView: React.FC = () => {
 
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('before');
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   const topLevelItems = canvasItems.filter((item) => !item.parentId);
+  const cardItems = useMemo(
+    () => canvasItems.filter((item) => item.type === 'Card'),
+    [canvasItems]
+  );
+
+  const contextTarget = contextMenu
+    ? canvasItems.find((item) => item.id === contextMenu.itemId) ?? null
+    : null;
 
   const getCardChildren = (cardId: string) =>
     canvasItems.filter((item) => item.parentId === cardId);
@@ -90,6 +110,25 @@ export const DesignView: React.FC = () => {
     setDragOverId(null);
   };
 
+  const handleItemSelect = (itemId: string, shiftKey: boolean) => {
+    if (shiftKey) {
+      toggleSelectedComponentId(itemId);
+      return;
+    }
+
+    setSelectedComponentIds([itemId]);
+    setActiveComponentId(itemId);
+  };
+
+  const handleDeleteAction = (itemId: string) => {
+    if (selectedComponentIds.length > 1 && selectedComponentIds.includes(itemId)) {
+      removeSelectedComponents();
+      return;
+    }
+
+    removeComponent(itemId);
+  };
+
   // canvas-level drag handlers (添加侧边栏组件到画布)
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -127,6 +166,7 @@ export const DesignView: React.FC = () => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isPreviewMode) return;
+    setContextMenu(null);
     const target = e.target as HTMLElement | null;
     let el = target;
     let insideItem = false;
@@ -138,8 +178,25 @@ export const DesignView: React.FC = () => {
       el = el.parentElement;
     }
     if (!insideItem) {
-      setActiveComponentId(null);
+      clearSelection();
     }
+  };
+
+  const openContextMenu = (event: React.MouseEvent, itemId: string) => {
+    if (isPreviewMode) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!selectedComponentIds.includes(itemId)) {
+      setSelectedComponentIds([itemId]);
+      setActiveComponentId(itemId);
+    }
+
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      itemId
+    });
   };
 
   const getItemAlignmentStyle = (
@@ -222,6 +279,7 @@ export const DesignView: React.FC = () => {
               const config = COMPONENT_REGISTRY[gi.type];
               if (!config) return null;
 
+              const isSelected = selectedComponentIds.includes(gi.id);
               const isActive = activeComponentId === gi.id;
               const componentTheme: Theme = {
                 ...theme,
@@ -247,13 +305,14 @@ export const DesignView: React.FC = () => {
                   onDrop={(e) => handleItemDrop(e, gi.id)}
                   onDragEnd={handleItemDragEnd}
                   onDragLeave={() => setDragOverId((prev) => (prev === gi.id ? null : prev))}
+                  onContextMenu={(event) => openContextMenu(event, gi.id)}
                   onMouseDown={(e) => {
                     e.stopPropagation();
-                    if (!isPreviewMode) setActiveComponentId(gi.id);
+                    if (!isPreviewMode) handleItemSelect(gi.id, e.shiftKey);
                   }}
                   className="relative group transition-colors flex-shrink-0"
                   style={{
-                    outline: isActive && !isPreviewMode ? `2px solid ${theme.primary}` : 'none',
+                    outline: (isSelected || isActive) && !isPreviewMode ? `2px solid ${theme.primary}` : 'none',
                     outlineOffset: '4px',
                     borderRadius: `${componentTheme.radius}px`,
                     boxSizing: 'border-box',
@@ -285,7 +344,7 @@ export const DesignView: React.FC = () => {
                       <button onClick={(e) => { e.stopPropagation(); moveComponent(gi.id, 'down'); }} className="p-1.5 rounded"><MoveDown size={14} /></button>
                       <div className="w-px h-4 mx-1" style={{ backgroundColor: theme.border }} />
                       <button onClick={(e) => { e.stopPropagation(); duplicateComponent(gi.id); }} className="p-1.5 rounded"><Copy size={14} /></button>
-                      <button onClick={(e) => { e.stopPropagation(); removeComponent(gi.id); }} className="p-1.5 rounded"><Trash2 size={14} /></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDeleteAction(gi.id); }} className="p-1.5 rounded"><Trash2 size={14} /></button>
                       <div className="cursor-move p-1.5" style={{ color: theme.mutedForeground }}><GripVertical size={14} /></div>
                     </div>
                   )}
@@ -301,6 +360,7 @@ export const DesignView: React.FC = () => {
         const config = COMPONENT_REGISTRY[item.type];
         if (!config) continue;
 
+        const isSelected = selectedComponentIds.includes(item.id);
         const isActive = activeComponentId === item.id;
         const componentTheme: Theme = {
           ...theme,
@@ -326,13 +386,14 @@ export const DesignView: React.FC = () => {
             onDrop={(e) => handleItemDrop(e, item.id)}
             onDragEnd={handleItemDragEnd}
             onDragLeave={() => setDragOverId((prev) => (prev === item.id ? null : prev))}
+            onContextMenu={(event) => openContextMenu(event, item.id)}
             onMouseDown={(e) => {
               e.stopPropagation();
-              if (!isPreviewMode) setActiveComponentId(item.id);
+              if (!isPreviewMode) handleItemSelect(item.id, e.shiftKey);
             }}
             className={`relative group transition-colors ${itemLayout.direction === 'row' ? 'flex-shrink-0' : 'w-full'}`}
             style={{
-              outline: isActive && !isPreviewMode ? `2px solid ${theme.primary}` : 'none',
+              outline: (isSelected || isActive) && !isPreviewMode ? `2px solid ${theme.primary}` : 'none',
               outlineOffset: '4px',
               borderRadius: `${componentTheme.radius}px`,
               ...getItemFrameStyle(item, itemLayout)
@@ -363,7 +424,7 @@ export const DesignView: React.FC = () => {
                 <button onClick={(e) => { e.stopPropagation(); moveComponent(item.id, 'down'); }} className="p-1.5 rounded"><MoveDown size={14} /></button>
                 <div className="w-px h-4 mx-1" style={{ backgroundColor: theme.border }} />
                 <button onClick={(e) => { e.stopPropagation(); duplicateComponent(item.id); }} className="p-1.5 rounded"><Copy size={14} /></button>
-                <button onClick={(e) => { e.stopPropagation(); removeComponent(item.id); }} className="p-1.5 rounded"><Trash2 size={14} /></button>
+                <button onClick={(e) => { e.stopPropagation(); handleDeleteAction(item.id); }} className="p-1.5 rounded"><Trash2 size={14} /></button>
                 <div className="cursor-move p-1.5" style={{ color: theme.mutedForeground }}><GripVertical size={14} /></div>
               </div>
             )}
@@ -430,6 +491,81 @@ export const DesignView: React.FC = () => {
         </div>
       ) : (
         renderNodes()
+      )}
+
+      {!isPreviewMode && contextMenu && contextTarget && (
+        <div
+          className="fixed z-[90] min-w-[180px] rounded-xl border border-slate-200 bg-white p-1 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+          style={{ left: contextMenu.x + 8, top: contextMenu.y + 8 }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              duplicateComponent(contextTarget.id);
+              setContextMenu(null);
+            }}
+            className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            复制组件
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              handleDeleteAction(contextTarget.id);
+              setContextMenu(null);
+            }}
+            className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs text-red-600 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-900/20"
+          >
+            {selectedComponentIds.length > 1 && selectedComponentIds.includes(contextTarget.id)
+              ? `删除所选 ${selectedComponentIds.length} 项`
+              : '删除组件'}
+          </button>
+          <div className="my-1 h-px bg-slate-200 dark:bg-slate-700" />
+          <button
+            type="button"
+            onClick={() => {
+              moveComponent(contextTarget.id, 'up');
+              setContextMenu(null);
+            }}
+            className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            上移
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              moveComponent(contextTarget.id, 'down');
+              setContextMenu(null);
+            }}
+            className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            下移
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              updateComponentParent(contextTarget.id, undefined);
+              setContextMenu(null);
+            }}
+            className="mt-1 flex w-full items-center rounded-lg px-3 py-2 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            移到顶层
+          </button>
+          {cardItems.filter((card) => card.id !== contextTarget.id).slice(0, 4).map((card) => (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => {
+                updateComponentParent(contextTarget.id, card.id);
+                setContextMenu(null);
+              }}
+              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              移到卡片：{String(card.props.title || 'Card')}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
