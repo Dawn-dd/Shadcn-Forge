@@ -215,6 +215,42 @@ export const Sidebar: React.FC = () => {
                 </div>
               </div>
 
+              {/* 卡片内排版方向（仅 Card 组件显示） */}
+              {activeComponent.type === 'Card' && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      卡片内排版 (Children)
+                    </label>
+                    <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded">
+                      {activeComponent.style?.childrenDirection ?? 'column'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => updateComponentStyle(activeComponent.id, { childrenDirection: 'column' })}
+                      className={`flex-1 py-1 text-xs rounded ${
+                        (activeComponent.style?.childrenDirection ?? 'column') === 'column'
+                          ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
+                          : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      垂直
+                    </button>
+                    <button
+                      onClick={() => updateComponentStyle(activeComponent.id, { childrenDirection: 'row' })}
+                      className={`flex-1 py-1 text-xs rounded ${
+                        activeComponent.style?.childrenDirection === 'row'
+                          ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
+                          : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      横向
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {activeDirection === 'row' && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
@@ -333,6 +369,7 @@ export const Sidebar: React.FC = () => {
                     borderRadius: undefined,
                     borderWidth: undefined,
                     direction: undefined,
+                    childrenDirection: undefined,
                     width: undefined,
                     height: undefined,
                     alignSelf: undefined,
@@ -516,6 +553,8 @@ export const Sidebar: React.FC = () => {
                           draggable
                           onDragStart={(e) => {
                             e.dataTransfer.setData('forge-type', type);
+                            e.dataTransfer.setData('text/plain', `forge-type:${type}`);
+                            e.dataTransfer.effectAllowed = 'copy';
                           }}
                           onClick={() => useForgeStore.getState().addComponent(type)}
                           className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-grab active:cursor-grabbing hover:border-orange-500 hover:shadow-md transition-all group"

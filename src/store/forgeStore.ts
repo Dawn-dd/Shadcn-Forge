@@ -111,6 +111,34 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
         activeComponentId: newItem.id
       };
     }),
+
+  addComponentToCard: (type, cardId) =>
+    set((state) => {
+      const cardExists = state.canvasItems.some((item) => item.id === cardId && item.type === 'Card');
+      if (!cardExists) return state;
+
+      const newItem: ComponentItem = {
+        id: generateId(),
+        type,
+        parentId: cardId,
+        props: structuredClone(COMPONENT_REGISTRY[type].defaultProps)
+      };
+
+      const items = [...state.canvasItems];
+      const cardIndex = items.findIndex((item) => item.id === cardId);
+      let insertIndex = cardIndex + 1;
+
+      while (insertIndex < items.length && items[insertIndex].parentId === cardId) {
+        insertIndex += 1;
+      }
+
+      items.splice(insertIndex, 0, newItem);
+
+      return {
+        ...state._saveHistory(items),
+        activeComponentId: newItem.id
+      };
+    }),
     
   updateComponentStyle: (id: string, styleUpdates: Partial<ComponentItem['style']>) =>
     set((state) => {
@@ -131,12 +159,40 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
       return state._saveHistory(newItems);
     }),
 
+  updateComponentParent: (id, parentId) =>
+    set((state) => {
+      if (id === parentId) return state;
+
+      const newItems = state.canvasItems.map((item) =>
+        item.id === id ? { ...item, parentId } : item
+      );
+
+      return state._saveHistory(newItems);
+    }),
+
   removeComponent: (id) =>
     set((state) => {
-      const newItems = state.canvasItems.filter((item) => item.id !== id);
+      const descendantIds = new Set<string>();
+      const queue = [id];
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        descendantIds.add(currentId);
+
+        state.canvasItems.forEach((item) => {
+          if (item.parentId === currentId && !descendantIds.has(item.id)) {
+            queue.push(item.id);
+          }
+        });
+      }
+
+      const newItems = state.canvasItems.filter((item) => !descendantIds.has(item.id));
       return {
         ...state._saveHistory(newItems),
-        activeComponentId: state.activeComponentId === id ? null : state.activeComponentId
+        activeComponentId:
+          state.activeComponentId && descendantIds.has(state.activeComponentId)
+            ? null
+            : state.activeComponentId
       };
     }),
 
@@ -191,7 +247,7 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
       return state._saveHistory(items);
     }),
 
-  insertComponentAt: (type, targetId) =>
+  insertComponentAt: (type, targetId, position = 'before') =>
     set((state) => {
       const newItem: ComponentItem = {
         id: generateId(),
@@ -205,7 +261,7 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
         const index = items.findIndex((i) => i.id === targetId);
         // 拦截 -1
         if (index !== -1) {
-          items.splice(index, 0, newItem);
+          items.splice(position === 'after' ? index + 1 : index, 0, newItem);
         } else {
           items.push(newItem);
         }

@@ -36,6 +36,7 @@ export interface Layout {
 export interface ComponentItem {
   id: string;
   type: string;
+  parentId?: string;
   props: Record<string, unknown>;
   style?: {
     backgroundColor?: string;
@@ -50,6 +51,8 @@ export interface ComponentItem {
     height?: 'auto' | 'full' | string;
     // 每个组件可单独设置排版方向
     direction?: 'column' | 'row';
+    // 卡片内子组件排版方向（仅 Card 组件有效）
+    childrenDirection?: 'column' | 'row';
     // 组件在画布中的对齐方式
     alignSelf?: 'start' | 'center' | 'end' | 'stretch';
     // 横向布局时的连续位置偏移，单位为百分比
@@ -93,11 +96,13 @@ export interface ForgeStore {
   updateLayout: (updates: Partial<Layout>) => void;
   updateComponentStyle: (id: string, styleUpdates: Partial<ComponentItem['style']>) => void;
   addComponent: (type: string) => void;
+  addComponentToCard: (type: string, cardId: string) => void;
   appendComponents: (items: ComponentItem[]) => void;
+  updateComponentParent: (id: string, parentId?: string) => void;
   removeComponent: (id: string) => void;
   duplicateComponent: (id: string) => void;
   reorderComponent: (draggedId: string, targetId: string, position?: 'before' | 'after') => void;
-  insertComponentAt: (type: string, targetId: string | null) => void;
+  insertComponentAt: (type: string, targetId: string | null, position?: 'before' | 'after') => void;
   moveComponent: (id: string, direction: 'up' | 'down') => void;
   updateComponentProp: (id: string, key: string, value: unknown) => void;
   undo: () => void;

@@ -66,7 +66,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
     },
     render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
       const cardProps = props as unknown as CardProps;
-      const styleFromItem = item?.style || {};
+      const nestedChildren = (props as { __children?: React.ReactNode[] }).__children ?? [];      const styleFromItem = item?.style || {};
       const mergedStyle: any = {
         backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
         borderColor: styleFromItem.borderColor ?? theme?.border,
@@ -94,6 +94,14 @@ export const displayComponents: Record<string, ComponentConfig> = {
           {cardProps.content && (
             <CardContent style={{ color: styleFromItem.color ?? theme?.foreground }}>
               <p className="text-sm leading-6">{cardProps.content}</p>
+            </CardContent>
+          )}
+          {nestedChildren.length > 0 && (
+            <CardContent
+              className="flex flex-col"
+              style={{ gap: `${(_layout as any)?.gap ?? 8}px`, color: styleFromItem.color ?? theme?.foreground }}
+            >
+              {nestedChildren}
             </CardContent>
           )}
           {(cardProps.footerPrimary || cardProps.footerSecondary) && (
