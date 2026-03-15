@@ -108,10 +108,23 @@
 - AI 入口位于 [src/components/forge/AIPrompt.tsx](src/components/forge/AIPrompt.tsx)，按钮挂载在 [src/components/forge/Toolbar.tsx](src/components/forge/Toolbar.tsx)。
 - 模型调用封装位于 [src/lib/ai.ts](src/lib/ai.ts)，前端默认请求本地 `/api/ai/generate` 代理接口。
 - 后端代理位于 `server/index.mjs`，现已支持 `gemini`、`qwen`、`openai-compatible` 和 `deepseek` 四类提供商。
+- 生产部署到 Vercel 时，使用 `api/ai/generate.js` 作为 Serverless Function（路径与前端默认请求 `/api/ai/generate` 一致）。
 - 如果你要接通义千问，推荐直接配置 `AI_PROVIDER=qwen`、`AI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1`、`AI_MODEL=qwen-flash`。
 - 如果你要接 DeepSeek，推荐直接配置 `AI_PROVIDER=deepseek`、`AI_BASE_URL=https://api.deepseek.com/v1`、`AI_MODEL=deepseek-chat`。
 - AI 返回的不是源码，而是组件 JSON；前端会把这些结果转换成 `ComponentItem` 写入 Zustand store，再由画布和导出模块消费。
 - 当前版本已经支持本地后端代理，浏览器不再直接暴露供应商密钥；如果要上线，建议继续在服务端补充鉴权、限流和日志。
+
+### Vercel 部署 AI（避免 404）
+
+1. 在 Vercel 项目里配置环境变量（Production/Preview 都建议加）：
+  - `AI_PROVIDER`（如 `qwen`）
+  - `AI_API_KEY`
+  - `AI_BASE_URL`（如 `https://dashscope.aliyuncs.com/compatible-mode/v1`）
+  - `AI_MODEL`（如 `qwen-flash`）
+  - `VITE_AI_MODEL`（建议与 `AI_MODEL` 一致）
+2. 前端请求地址保持默认即可：`/api/ai/generate`（不要填本地 `http://localhost:8787`）。
+3. 重新部署后可直接访问 `https://你的域名/api/ai/generate`（GET 会 405，表示路由已存在；POST 才是正确调用方式）。
+4. 本地开发仍然使用 `pnpm dev:api` + `pnpm dev`，生产由 Vercel Function 接管。
 
 ---
 
