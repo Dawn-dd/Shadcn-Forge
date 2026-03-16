@@ -9,13 +9,17 @@ import 'prismjs/themes/prism-tomorrow.css';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
+type Framework = 'react' | 'vue' | 'html';
+type Language = 'ts' | 'js';
+type StyleMode = 'inline' | 'external' | 'tailwind';
+
 export const CodeExporter: React.FC = () => {
   const { canvasItems, theme } = useForgeStore();
   // 框架与语言选择
-  const [framework, setFramework] = useState<'react' | 'vue' | 'html'>('react');
-  const [language, setLanguage] = useState<'ts' | 'js'>('ts');
+  const [framework, setFramework] = useState<Framework>('react');
+  const [language, setLanguage] = useState<Language>('ts');
   const [copied, setCopied] = useState(false);
-  const [styleMode, setStyleMode] = useState<'inline' | 'external' | 'tailwind'>('inline');
+  const [styleMode, setStyleMode] = useState<StyleMode>('inline');
   const [downloadZip, setDownloadZip] = useState(false);
 
   // 生成代码
@@ -28,19 +32,19 @@ export const CodeExporter: React.FC = () => {
     }
     // html
     return generateHTMLCode(canvasItems, theme, styleMode);
-  }, [/*codeType*/ framework, language, canvasItems, theme, styleMode]);
+  }, [framework, language, canvasItems, theme, styleMode]);
 
   // 高亮代码
   const highlightedCode = useMemo(() => {
     try {
       const lang = framework === 'react' ? (language === 'ts' ? 'tsx' : 'jsx') : (framework === 'html' ? 'html' : 'html');
       const prismLang = lang === 'tsx' ? Prism.languages.tsx : (lang === 'jsx' ? Prism.languages.jsx : Prism.languages.html);
-      return Prism.highlight(code, prismLang, lang as any);
+      return Prism.highlight(code, prismLang, lang);
     } catch (error) {
       console.error('代码高亮失败:', error);
       return code;
     }
-  }, [code, /*codeType*/ framework, language]);
+  }, [code, framework, language]);
 
   const handleCopy = async () => {
     try {
@@ -94,7 +98,7 @@ export const CodeExporter: React.FC = () => {
             <label className="text-xs text-slate-500 block mb-1">框架</label>
             <select
               value={framework}
-              onChange={(e) => setFramework(e.target.value as any)}
+              onChange={(e) => setFramework(e.target.value as Framework)}
               className="px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-sm"
             >
               <option value="react">React</option>
@@ -107,7 +111,7 @@ export const CodeExporter: React.FC = () => {
             <label className="text-xs text-slate-500 block mb-1">语言</label>
             <select
               value={language}
-              onChange={(e) => setLanguage(e.target.value as any)}
+              onChange={(e) => setLanguage(e.target.value as Language)}
               className="px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-sm"
               disabled={framework !== 'react'}
             >
@@ -120,7 +124,7 @@ export const CodeExporter: React.FC = () => {
             <label className="text-xs text-slate-500 block mb-1">样式导出</label>
             <select
               value={styleMode}
-              onChange={(e) => setStyleMode(e.target.value as any)}
+              onChange={(e) => setStyleMode(e.target.value as StyleMode)}
               className="px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-sm"
             >
               <option value="inline">Inline (内联)</option>

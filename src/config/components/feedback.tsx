@@ -7,8 +7,13 @@ import {
 } from '@/components/ui/alert';
 // import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import React from 'react';
 
-const withDimensionStyles = (item?: ComponentItem) => ({
+interface LayoutConfig {
+  gap?: number;
+}
+
+const withDimensionStyles = (item?: ComponentItem): React.CSSProperties => ({
   width:
     item?.style?.width === 'full'
       ? '100%'
@@ -36,10 +41,10 @@ export const feedbackComponents: Record<string, ComponentConfig> = {
     propSchema: {
       variant: { type: 'select', options: ['default', 'destructive'] }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const alertProps = props as unknown as AlertProps;
       const styleFromItem = item?.style || {};
-      const mergedStyle: any = {
+      const mergedStyle: React.CSSProperties = {
         backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
         borderColor: styleFromItem.borderColor ?? (alertProps.variant === 'destructive' ? theme?.destructive : theme?.border),
         color: styleFromItem.color ?? theme?.foreground,
@@ -76,7 +81,7 @@ export const feedbackComponents: Record<string, ComponentConfig> = {
     propSchema: {
       value: { type: 'number', min: 0, max: 100 }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const progressProps = props as unknown as ProgressProps;
       const styleFromItem = item?.style || {};
       // Only change the filled bar color based on item.style.backgroundColor; keep track and labels using theme
@@ -123,7 +128,7 @@ export const feedbackComponents: Record<string, ComponentConfig> = {
     propSchema: {
       lines: { type: 'number', min: 1, max: 5 }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const skeletonProps = props as unknown as SkeletonProps;
       const styleFromItem = item?.style || {};
       const bg = styleFromItem.backgroundColor ?? theme?.muted;
@@ -141,7 +146,7 @@ export const feedbackComponents: Record<string, ComponentConfig> = {
             </div>
           </div>
           <div className="space-y-2">
-            {Array.from({ length: skeletonProps.lines }).map((_, i) => (
+            {Array.from({ length: skeletonProps.lines as number }).map((_, i) => (
               <Skeleton key={i} className="h-4 w-full" style={{ backgroundColor: bg, borderRadius: radius }} />
             ))}
           </div>

@@ -99,11 +99,13 @@ export async function fetchGemini(
     } catch (err) {
       console.error(`Gemini API attempt ${attempt + 1}/${maxRetries} failed:`, err);
 
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        err = new Error('Gemini 请求超时，请稍后重试');
-      }
+      let requestError: GeminiRequestError;
 
-      const requestError = err as GeminiRequestError;
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        requestError = new Error('Gemini 请求超时，请稍后重试') as GeminiRequestError;
+      } else {
+        requestError = err as GeminiRequestError;
+      }
 
       if (requestError.status === 429) {
         if (!quotaRetryUsed && requestError.retryAfterMs && requestError.retryAfterMs <= 30000) {
@@ -116,7 +118,7 @@ export async function fetchGemini(
       }
       
       if (attempt === maxRetries - 1) {
-        throw new Error(`AI API failed after ${maxRetries} attempts: ${err}`);
+        throw new Error(`AI API failed after ${maxRetries} attempts: ${requestError.message}`);
       }
       
       await sleep(delay);

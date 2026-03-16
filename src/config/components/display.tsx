@@ -16,8 +16,9 @@ import { Tabs } from '@/components/ui/tabs';
 import { Dialog } from '@/components/ui/dialog';
 import { DropdownMenu } from '@/components/ui/dropdownmenu';
 import { Table } from '@/components/ui/table';
+import React from 'react';
 
-const withDimensionStyles = (item?: ComponentItem) => ({
+const withDimensionStyles = (item?: ComponentItem): React.CSSProperties => ({
   width:
     item?.style?.width === 'full'
       ? '100%'
@@ -32,18 +33,22 @@ const withDimensionStyles = (item?: ComponentItem) => ({
         : item.style.height
 });
 
-const splitByComma = (value: string) =>
+const splitByComma = (value: string): string[] =>
   value
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean);
 
-const parseTableRows = (rows: string) =>
+const parseTableRows = (rows: string): string[][] =>
   rows
     .split('|')
     .map((row) => row.trim())
     .filter(Boolean)
     .map((row) => splitByComma(row));
+
+interface LayoutConfig {
+  gap?: number;
+}
 
 export const displayComponents: Record<string, ComponentConfig> = {
   Card: {
@@ -64,10 +69,12 @@ export const displayComponents: Record<string, ComponentConfig> = {
       footerPrimary: { type: 'string' },
       footerSecondary: { type: 'string' }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const cardProps = props as unknown as CardProps;
-      const nestedChildren = (props as { __children?: React.ReactNode[] }).__children ?? [];      const styleFromItem = item?.style || {};
-      const mergedStyle: any = {
+      const nestedChildren = (props as { __children?: React.ReactNode[] }).__children ?? [];
+      const styleFromItem = item?.style || {};
+      
+      const mergedStyle: React.CSSProperties = {
         backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
         borderColor: styleFromItem.borderColor ?? theme?.border,
         borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
@@ -76,11 +83,12 @@ export const displayComponents: Record<string, ComponentConfig> = {
         color: styleFromItem.color ?? undefined,
         ...withDimensionStyles(item)
       };
-       return (
-         <Card 
+      
+      return (
+        <Card 
           className="w-full"
           style={mergedStyle}
-         >
+        >
           <CardHeader>
             <CardTitle style={{ color: theme?.foreground }}>
               {cardProps.title}
@@ -99,7 +107,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
           {nestedChildren.length > 0 && (
             <CardContent
               className="flex flex-col"
-              style={{ gap: `${(_layout as any)?.gap ?? 8}px`, color: styleFromItem.color ?? theme?.foreground }}
+              style={{ gap: `${_layout?.gap ?? 8}px`, color: styleFromItem.color ?? theme?.foreground }}
             >
               {nestedChildren}
             </CardContent>
@@ -131,7 +139,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
     propSchema: {
       size: { type: 'select', options: ['sm', 'default', 'lg'] }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const avatarProps = props as unknown as AvatarProps;
       const sizeClasses: Record<AvatarProps['size'], string> = {
         sm: 'h-8 w-8',
@@ -140,7 +148,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
       };
       
       const styleFromItem = item?.style || {};
-      const mergedStyle: any = {
+      const mergedStyle: React.CSSProperties = {
         backgroundColor: styleFromItem.backgroundColor ?? theme?.primary,
         color: (styleFromItem.color ?? (theme?.primaryForeground || '#ffffff')),
         borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : undefined,
@@ -175,10 +183,10 @@ export const displayComponents: Record<string, ComponentConfig> = {
         options: ['default', 'secondary', 'destructive', 'outline']
       }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const badgeProps = props as unknown as BadgeProps;
       const styleFromItem = item?.style || {};
-      const mergedStyle: any = {
+      const mergedStyle: React.CSSProperties = {
         backgroundColor: styleFromItem.backgroundColor ?? (badgeProps.variant === 'default' ? theme?.primary : undefined),
         color: styleFromItem.color ?? (badgeProps.variant === 'default' ? (theme?.primaryForeground || '#ffffff') : theme?.foreground),
         borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
@@ -188,16 +196,17 @@ export const displayComponents: Record<string, ComponentConfig> = {
         fontSize: styleFromItem.fontSize !== undefined ? `${styleFromItem.fontSize}px` : undefined,
         ...withDimensionStyles(item)
       };
-       return (
+      
+      return (
         <Badge 
           variant={badgeProps.variant}
           style={mergedStyle}
         >
           {badgeProps.text}
         </Badge>
-       );
-     }
-   },
+      );
+    }
+  },
 
   Separator: {
     name: '分割线 (Separator)',
@@ -209,7 +218,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
     propSchema: {
       orientation: { type: 'select', options: ['horizontal', 'vertical'] }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const separatorProps = props as unknown as SeparatorProps;
       return (
         <div className="w-full py-4" style={withDimensionStyles(item)}>
@@ -231,7 +240,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
       defaultTab: '概览',
       content: '这里展示当前标签页的内容。'
     },
-    render: (props, _theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, _theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const tabsProps = props as unknown as TabsProps;
       return (
         <div style={withDimensionStyles(item)} className="w-full">
@@ -254,7 +263,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
       columns: '姓名,角色,状态',
       rows: 'Luna,Admin,Active|Milo,Editor,Invited|Ava,Viewer,Offline'
     },
-    render: (props, _theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, _theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const tableProps = props as unknown as TableProps;
       return (
         <div style={withDimensionStyles(item)} className="w-full">
@@ -274,7 +283,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
       description: '这个弹窗用于预览更接近 shadcn 的交互结构。',
       confirmText: '确认'
     },
-    render: (props, _theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, _theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const dialogProps = props as unknown as DialogProps;
       return (
         <div style={withDimensionStyles(item)}>
@@ -292,7 +301,7 @@ export const displayComponents: Record<string, ComponentConfig> = {
       triggerText: '更多操作',
       items: '编辑,复制,归档,删除'
     },
-    render: (props, _theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, _theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const dropdownProps = props as unknown as DropdownMenuProps;
       return (
         <div style={withDimensionStyles(item)}>

@@ -7,8 +7,13 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
+import React from 'react';
 
-const withDimensionStyles = (item?: ComponentItem) => ({
+interface LayoutConfig {
+  gap?: number;
+}
+
+const withDimensionStyles = (item?: ComponentItem): React.CSSProperties => ({
   width:
     item?.style?.width === 'full'
       ? '100%'
@@ -23,7 +28,7 @@ const withDimensionStyles = (item?: ComponentItem) => ({
         : item.style.height
 });
 
-const splitByComma = (value: string) =>
+const splitByComma = (value: string): string[] =>
   value
     .split(',')
     .map((part) => part.trim())
@@ -46,7 +51,7 @@ export const formComponents: Record<string, ComponentConfig> = {
       },
       size: { type: 'select', options: ['sm', 'default', 'lg'] }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const buttonProps = props as unknown as ButtonProps;
       const styleFromItem = item?.style || {};
       const bgFromVariant = buttonProps.variant === 'default' ? theme?.primary : 
@@ -56,7 +61,7 @@ export const formComponents: Record<string, ComponentConfig> = {
                               buttonProps.variant === 'secondary' ? theme?.secondaryForeground :
                               buttonProps.variant === 'outline' || buttonProps.variant === 'ghost' ? theme?.foreground : undefined;
 
-      const mergedStyle: any = {
+      const mergedStyle: React.CSSProperties = {
         backgroundColor: styleFromItem.backgroundColor ?? bgFromVariant,
         color: styleFromItem.color ?? colorFromVariant,
         borderRadius: styleFromItem.borderRadius !== undefined ? `${styleFromItem.borderRadius}px` : (theme ? `${theme.radius}px` : undefined),
@@ -92,10 +97,10 @@ export const formComponents: Record<string, ComponentConfig> = {
         options: ['text', 'email', 'password', 'number', 'tel', 'url']
       }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const inputProps = props as unknown as InputProps;
       const styleFromItem = item?.style || {};
-      const mergedStyle: any = {
+      const mergedStyle: React.CSSProperties = {
         backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
         borderColor: styleFromItem.borderColor ?? theme?.border,
         color: styleFromItem.color ?? theme?.foreground,
@@ -129,10 +134,10 @@ export const formComponents: Record<string, ComponentConfig> = {
     propSchema: {
       rows: { type: 'number', min: 2, max: 10 }
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const textareaProps = props as unknown as TextareaProps;
       const styleFromItem = item?.style || {};
-      const mergedStyle: any = {
+      const mergedStyle: React.CSSProperties = {
         backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
         borderColor: styleFromItem.borderColor ?? theme?.border,
         color: styleFromItem.color ?? theme?.foreground,
@@ -163,10 +168,10 @@ export const formComponents: Record<string, ComponentConfig> = {
       placeholder: '选择一个选项',
       options: '个人版,团队版,企业版'
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const selectProps = props as unknown as SelectProps;
       const styleFromItem = item?.style || {};
-      const mergedStyle: any = {
+      const mergedStyle: React.CSSProperties = {
         backgroundColor: styleFromItem.backgroundColor ?? theme?.background,
         borderColor: styleFromItem.borderColor ?? theme?.border,
         color: styleFromItem.color ?? theme?.foreground,
@@ -189,23 +194,30 @@ export const formComponents: Record<string, ComponentConfig> = {
       label: '启用推送通知',
       checked: true
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const switchProps = props as unknown as SwitchProps;
       const styleFromItem = item?.style || {};
-      // render Switch and Label inline without outer container; only change checked color and label color
+      
+      const switchStyle: React.CSSProperties = {
+        backgroundColor: switchProps.checked ? (styleFromItem.backgroundColor ?? theme?.primary) : undefined
+      };
+      
+      const labelStyle: React.CSSProperties = {
+        color: styleFromItem.color ?? theme?.foreground,
+        marginLeft: '8px'
+      };
+      
       return (
         <>
           <Switch
             id="switch"
             checked={switchProps.checked}
-            style={{
-              backgroundColor: switchProps.checked ? (styleFromItem.backgroundColor ?? theme?.primary) : undefined
-            }}
+            style={switchStyle}
           />
           <Label
             htmlFor="switch"
             className="text-sm font-medium cursor-pointer"
-            style={{ color: styleFromItem.color ?? theme?.foreground, marginLeft: '8px' }}
+            style={labelStyle}
           >
             {switchProps.label}
           </Label>
@@ -222,23 +234,35 @@ export const formComponents: Record<string, ComponentConfig> = {
       label: '我同意服务条款',
       checked: true
     },
-    render: (props, theme?: Theme, _layout?: any, item?: ComponentItem) => {
+    render: (props, theme?: Theme, _layout?: LayoutConfig, item?: ComponentItem) => {
       const checkboxProps = props as unknown as CheckboxProps;
       const styleFromItem = item?.style || {};
+      
+      const containerStyle: React.CSSProperties = {
+        padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined
+      };
+      
+      const checkboxStyle: React.CSSProperties = {
+        borderColor: styleFromItem.borderColor ?? theme?.border,
+        backgroundColor: checkboxProps.checked ? (styleFromItem.backgroundColor ?? theme?.primary) : 'transparent'
+      };
+      
+      const labelStyle: React.CSSProperties = {
+        color: styleFromItem.color ?? theme?.foreground,
+        fontSize: styleFromItem.fontSize !== undefined ? `${styleFromItem.fontSize}px` : undefined
+      };
+      
       return (
-        <div className="flex items-center space-x-2 w-full" style={{ padding: styleFromItem.padding !== undefined ? `${styleFromItem.padding}px` : undefined }}>
+        <div className="flex items-center space-x-2 w-full" style={containerStyle}>
           <Checkbox 
             id="checkbox" 
             checked={checkboxProps.checked}
-            style={{
-              borderColor: styleFromItem.borderColor ?? theme?.border,
-              backgroundColor: checkboxProps.checked ? (styleFromItem.backgroundColor ?? theme?.primary) : 'transparent'
-            }}
+            style={checkboxStyle}
           />
           <Label
             htmlFor="checkbox"
             className="text-sm font-medium leading-none cursor-pointer"
-            style={{ color: styleFromItem.color ?? theme?.foreground, fontSize: styleFromItem.fontSize !== undefined ? `${styleFromItem.fontSize}px` : undefined }}
+            style={labelStyle}
           >
             {checkboxProps.label}
           </Label>
@@ -246,4 +270,4 @@ export const formComponents: Record<string, ComponentConfig> = {
       );
     }
   }
- };
+};
