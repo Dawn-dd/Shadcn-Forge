@@ -3,7 +3,7 @@ import { useForgeStore } from '@/store/forgeStore';
 import { COMPONENT_REGISTRY } from '@/config/components';
 import { Theme, Layout, ComponentItem } from '@/types';
 import { getItemFrameStyle } from '../utils';
-import { ActiveToolbar } from './ActiveToolbar';
+import { ActiveToolbar } from '../components/ActiveToolbar';
 
 interface DndHandlers {
   handleItemDragStart: (e: React.DragEvent, id: string) => void;

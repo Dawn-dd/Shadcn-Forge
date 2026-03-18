@@ -3,7 +3,7 @@ import { useForgeStore } from '@/store/forgeStore';
 import { getAlignClass } from './utils';
 import { useCanvasDnD } from './hooks/useCanvasDnD';
 import { useCanvasContextMenu } from './hooks/useCanvasContextMenu';
-import { useCanvasNode } from './components/CanvasNode';
+import { useCanvasNode } from './hooks/useCanvasNode';
 import { EmptyState } from './components/EmptyState';
 import { ContextMenu } from './components/ContextMenu';
 
