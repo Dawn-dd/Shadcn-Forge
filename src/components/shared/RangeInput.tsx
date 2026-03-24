@@ -1,3 +1,7 @@
+/**
+ * 范围输入组件的属性接口定义
+ * 定义了范围输入组件所需的所有属性类型
+ */
 interface RangeInputProps {
   label: string;
   value: number;

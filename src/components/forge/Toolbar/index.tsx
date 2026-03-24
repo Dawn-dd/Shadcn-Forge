@@ -1,11 +1,9 @@
-// components/Toolbar/index.tsx
 import React from 'react';
 import { useForgeStore } from '@/store/forgeStore';
 import { AIPrompt } from '@/components/forge/AIPrompt';
 
-// 引入子模块
-import { ToolbarTabs } from './components/Tabs';
-import { ToolbarActions } from './components/Actions';
+import { ToolbarTabs } from './components/ToolbarTabs';
+import { ToolbarActions } from './components/ToolbarActions';
 import { ImportConfirmModal } from './components/ImportConfirmModal';
 import { useImportExport } from './hooks/useImportExport';
 

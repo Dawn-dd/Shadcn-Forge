@@ -1,25 +1,38 @@
-// components/Toolbar/ToolbarActions.tsx
+/**
+ * 工具栏操作组件
+ * 提供编辑/预览切换、撤销/重做、暗黑模式切换、导入/导出等功能
+ */
 import React from 'react';
 import { Edit3, Play, Undo2, Redo2, Sun, Moon, Upload, Download } from 'lucide-react';
 import { useForgeStore } from '@/store/forgeStore';
 
+/**
+ * ToolbarActionsProps 接口定义组件的属性类型
+ * @interface
+ */
 interface ToolbarActionsProps {
     importInputRef: React.RefObject<HTMLInputElement | null>;
     onExportZip: () => void;
     onImportJSON: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
+/**
+ * ToolbarActions 组件
+ * @component
+ */
 export const ToolbarActions: React.FC<ToolbarActionsProps> = ({ 
   importInputRef, 
   onExportZip, 
   onImportJSON 
 }) => {
+  // 从 ForgeStore 获取状态和方法
   const { 
     isDarkMode, toggleDarkMode, 
     undo, redo, historyStep, history,
     isPreviewMode, togglePreviewMode
   } = useForgeStore();
 
+  // 计算撤销和重做按钮是否可用
   const canUndo = historyStep > 0;
   const canRedo = historyStep < history.length - 1;
 

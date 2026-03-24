@@ -1,20 +1,33 @@
-import { useState } from 'react';
-import { Loader2, Sparkles } from 'lucide-react';
-import { ComponentItem } from '@/types';
-import { COMPONENT_REGISTRY } from '@/config/components';
-import { fetchAI } from '@/lib/ai';
+/**
+ * PropsForm组件：用于编辑和修改组件属性的表单界面
+ * 支持多种类型的属性编辑，包括选择框、布尔值、数字、文本等
+ * 集成了AI重写文本功能，可以优化文案内容
+ */
+import { useState } from 'react';  // 从React库中导入useState钩子
+import { Loader2, Sparkles } from 'lucide-react';  // 从lucide-react库中导入Loader2和Sparkles图标
+import { ComponentItem } from '@/types';  // 从types目录导入ComponentItem类型定义
+import { COMPONENT_REGISTRY } from '@/config/components';  // 从config目录导入组件注册表
+import { fetchAI } from '@/lib/ai';  // 从lib目录导入AI功能
 
+// 定义PropsForm组件的属性接口
 interface PropsFormProps {
-  activeComponent: ComponentItem;
-  updateComponentProp: (id: string, key: string, value: unknown) => void;
+  activeComponent: ComponentItem;    // 当前正在编辑的组件
+  updateComponentProp: (id: string, key: string, value: unknown) => void;  // 更新组件属性的回调函数
 }
 
+/**
+ * PropsForm组件：一个用于编辑组件属性的表单组件
+ * @param {PropsFormProps} props - 组件的属性
+ * @returns {JSX.Element} - 返回渲染的表单界面
+ */
 export const PropsForm: React.FC<PropsFormProps> = ({ activeComponent, updateComponentProp }) => {
+  // 状态：当前正在AI重写的属性键
   const [rewritingKey, setRewritingKey] = useState<string | null>(null);
 
+  // 处理AI重写文本的函数
   const handleAIRewrite = async (id: string, propKey: string, currentValue: unknown) => {
     if (!currentValue || typeof currentValue !== 'string') return;
-    setRewritingKey(propKey);
+    setRewritingKey(propKey);  // 设置正在重写的属性键
     try {
       const sysPrompt = '你是一个资深的UX文案专家。请将用户提供的UI文案重写得更加专业、自然、简练，适合用于现代Web应用。直接返回修改后的文本，不要带有任何引号或多余解释。';
       const newText = await fetchAI(currentValue, sysPrompt, 'text/plain');
@@ -28,12 +41,18 @@ export const PropsForm: React.FC<PropsFormProps> = ({ activeComponent, updateCom
 
   return (
     <div className="space-y-5">
+      {/* 遍历当前组件的所有属性 */}
       {Object.entries(activeComponent.props).map(([propKey, propValue]) => {
+        // 获取当前属性的schema定义
         const schema = COMPONENT_REGISTRY[activeComponent.type].propSchema?.[propKey];
+        // 获取属性值的类型
         const valueType = typeof propValue;
+        // 判断是否为字符串类型且不是特殊属性
         const isString = valueType === 'string' && propKey !== 'id' && propKey !== 'fallback';
+        // 判断是否正在重写该属性
         const isRewriting = rewritingKey === propKey;
 
+        // 处理选择类型的属性
         if (schema && schema.type === 'select' && schema.options) {
           return (
             <div key={propKey} className="space-y-1.5">
@@ -49,6 +68,7 @@ export const PropsForm: React.FC<PropsFormProps> = ({ activeComponent, updateCom
           );
         }
 
+        // 处理布尔类型的属性
         if (valueType === 'boolean') {
           return (
             <div key={propKey} className="flex items-center justify-between">
@@ -63,6 +83,7 @@ export const PropsForm: React.FC<PropsFormProps> = ({ activeComponent, updateCom
           );
         }
 
+        // 处理数字类型的属性
         if (valueType === 'number') {
           return (
             <div key={propKey} className="space-y-1.5">
@@ -82,6 +103,7 @@ export const PropsForm: React.FC<PropsFormProps> = ({ activeComponent, updateCom
           );
         }
 
+        // 处理字符串类型的属性
         if (valueType === 'string') {
           const stringValue = propValue as string;
           return (
@@ -99,6 +121,7 @@ export const PropsForm: React.FC<PropsFormProps> = ({ activeComponent, updateCom
                   </button>
                 )}
               </div>
+              {/* 根据字符串长度决定使用文本框还是输入框 */}
               {stringValue.length > 20 || propKey === 'description' ? (
                 <textarea
                   value={stringValue}
@@ -119,6 +142,7 @@ export const PropsForm: React.FC<PropsFormProps> = ({ activeComponent, updateCom
           );
         }
 
+        // 处理其他类型的属性
         return (
           <div key={propKey} className="space-y-1.5">
             <label className="text-xs font-medium text-slate-700 dark:text-slate-300 capitalize">{propKey}</label>

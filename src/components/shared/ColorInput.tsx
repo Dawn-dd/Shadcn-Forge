@@ -1,3 +1,7 @@
+/**
+ * 颜色输入组件的属性接口定义
+ * 包含标签文本、当前颜色值和颜色值变更回调函数
+ */
 interface ColorInputProps {
   label: string;
   value: string;

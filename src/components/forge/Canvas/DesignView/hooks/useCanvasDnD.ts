@@ -1,3 +1,7 @@
+/**
+ * 自定义Hook，用于处理画布上的拖拽功能
+ * 提供了组件拖拽、放置、排序等相关功能
+ */
 import { useState } from 'react';
 import { useForgeStore } from '@/store/forgeStore';
 import { Layout } from '@/types';
@@ -17,6 +21,7 @@ export const useCanvasDnD = () => {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<DropPosition>('before');
 
+  /** * 处理拖拽开始事件的函数 * 启动拖拽操作，将当前拖拽项的 ID 传递给后续的 drop（放置）事件处理程序，并更新应用状态以反映拖拽开始。 */
   const handleItemDragStart = (e: React.DragEvent, id: string) => {
     e.stopPropagation();
     e.dataTransfer.setData('forge-drag-id', id);
@@ -39,7 +44,8 @@ export const useCanvasDnD = () => {
     setDropPosition(nextPosition);
   };
 
-  const handleItemDrop = (e: React.DragEvent, targetId: string) => {
+  /** * 处理项目拖放事件的函数 * 实时检测拖拽元素悬停在哪个目标元素上，并精确判断用户意图是将其放在目标的前面还是后面，从而实现精确的排序或插入功能。 */
+  const handleItemDrop = (e: React.DragEvent, targetId: string) => { 
     e.stopPropagation();
     e.preventDefault();
 
@@ -69,17 +75,17 @@ export const useCanvasDnD = () => {
     setDragOverId(null);
   };
 
-  const handleItemDragEnd = (e: React.DragEvent) => {
+  const handleItemDragEnd = (e: React.DragEvent) => { //  处理拖拽结束事件的函数
     e.preventDefault();
     setDragOverId(null);
   };
 
-  const handleCanvasDragOver = (e: React.DragEvent) => {
+  const handleCanvasDragOver = (e: React.DragEvent) => { //  处理画布拖拽悬停事件的函数
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   };
 
-  const handleCanvasDrop = (e: React.DragEvent) => {
+  const handleCanvasDrop = (e: React.DragEvent) => { //  处理画布放置事件的函数
     e.preventDefault();
     const plainData = e.dataTransfer.getData('text/plain');
     const fallbackType = plainData.startsWith('forge-type:') ? plainData.replace('forge-type:', '') : '';

@@ -1,3 +1,7 @@
+/**
+ * 使用AI提示功能的自定义React Hook
+ * 提供与AI交互生成UI组件的功能
+ */
 import { useState } from 'react';
 import { useForgeStore } from '@/store/forgeStore';
 import { fetchAI } from '@/lib/ai';
@@ -10,6 +14,11 @@ import {
   smartNestItemsIntoCard, applyVisualHierarchy, getUserFacingError
 } from '../utils';
 
+/**
+ * 自定义Hook：useAIPrompt
+ * 管理AI生成UI组件的状态和逻辑
+ * @returns {Object} 包含状态和函数的对象
+ */
 export const useAIPrompt = () => {
   const { theme, canvasItems, appendComponents, clearCanvas, aiSessionLog, appendAISessionEntry } = useForgeStore();
   

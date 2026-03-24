@@ -1,3 +1,7 @@
+/**
+ * 本文件实现了一个用于本地AI重写的React Hook - useLocalAIRewrite
+ * 该Hook提供了与AI交互进行局部组件重写的功能，包括生成候选方案、应用修改和后续优化等
+ */
 import { useState, useEffect } from 'react';
 import { useForgeStore } from '@/store/forgeStore';
 import { COMPONENT_REGISTRY } from '@/config/components';
@@ -33,13 +37,13 @@ export const useLocalAIRewrite = (activeComponent: ComponentItem | undefined) =>
     setPreviewCompareMode(false);
     setCandidateFollowupPrompt('');
     setCandidateFollowupError(null);
-  }, [activeComponent?.id]);
+  }, [activeComponent?.id]); //  依赖项为活动组件的ID
 
   useEffect(() => {
     setPreviewCompareMode(false);
     setCandidateFollowupPrompt('');
     setCandidateFollowupError(null);
-  }, [previewCandidateIndex]);
+  }, [previewCandidateIndex]); //  依赖项为预览候选人索引
 
   const applyLocalCandidate = (candidate: LocalRewriteCandidate) => {
     if (!activeComponent) return;
@@ -79,29 +83,29 @@ export const useLocalAIRewrite = (activeComponent: ComponentItem | undefined) =>
             ? '本次重点优化结构与层级，可以调整 variant、size、字段组合；若当前是 Card，可改写 children 结构，但文案保持简洁。'
             : '本次同时优化文案与结构，允许调整 props 和 children，使结果更完整。';
       
-      const sysPrompt = [
+      const sysPrompt = [ //  系统提示信息，包含多个指导要点
         '你是一个专业的 UI 局部改写助手。',
         '你只重写当前选中的单个组件或卡片，不要生成整页。',
         '你必须生成 2 个不同方向但都合理的候选方案。',
         `当前主题色：primary=${theme.primary}, secondary=${theme.secondary}, background=${theme.background}, foreground=${theme.foreground}。`,
         `当前选中组件类型：${activeComponent.type}。`,
         `当前组件默认 props schema：${JSON.stringify({ type: activeComponent.type, availableProps: Object.keys(componentSchema.defaultProps), propSchema: componentSchema.propSchema || {} })}`,
-        promptMode === 'card'
+        promptMode === 'card' //  根据是否为卡片模式设置不同的输出格式要求
           ? '输出必须是严格 JSON 对象，格式为 {"candidates": [{"summary": string, "targetProps": object, "children": [{"type": string, "props": object}]?}, {...}] }。children 表示卡片内的新子组件。'
           : '输出必须是严格 JSON 对象，格式为 {"candidates": [{"summary": string, "targetProps": object}, {...}] }。不要包含 children。',
         `最近会话上下文（用于保持连续意图）：\n${aiSessionContext}`,
         '每个 summary 必须是一句短说明，用来区分两个候选方案。',
-        modeInstruction,
+        modeInstruction, //  注入模式特定指令
         '如果用户没有要求修改某些属性，可以保持语义上合理即可。',
         '文案要更专业、统一、简洁，按钮和说明文字要有主次层级。',
         `所有可用组件 schema：${JSON.stringify(schemaForLLM)}`
       ].join('\n');
 
       const raw = await fetchAI(localAiPrompt, sysPrompt, 'application/json');
-      const parsed = JSON.parse(raw) as LocalRewritePayload;
+      const parsed = JSON.parse(raw) as LocalRewritePayload; //  解析 AI 响应为 LocalRewritePayload 类型
 
       const candidates = normalizeLocalRewriteCandidates(parsed)
-        .map((candidate) => ({
+        .map((candidate) => ({ //  使用 map 函数处理候选数组，为每个候选对象创建新结构
           summary: candidate.summary,
           targetProps: sanitizePropsForType(activeComponent.type, candidate.targetProps),
           children: candidate.children

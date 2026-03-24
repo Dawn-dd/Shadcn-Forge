@@ -4,11 +4,16 @@ import { useForgeStore } from '@/store/forgeStore';
 import { COMPONENT_REGISTRY } from '@/config/components';
 import { generateComponentJSXSnippet } from '@/lib/codeGenerator';
 
+// 引入自定义 hooks 和组件
 import { useLocalAIRewrite } from './hooks/useLocalAIRewrite';
 import { PropsForm } from './components/PropsForm';
 import { AIRewriteSection } from './components/AIRewriteSection';
 import { CandidatePreviewModal } from './components/CandidatePreviewModal';
 
+/**
+ * PropertyPanel 组件
+ * 功能：属性面板组件，用于编辑选中组件的属性和进行 AI 重写操作
+ */
 export const PropertyPanel: React.FC = () => {
   const {
     layout,
@@ -29,6 +34,10 @@ export const PropertyPanel: React.FC = () => {
   const currentCardChildren = canvasItems.filter((item) => item.parentId === activeComponent.id);
   const previewCandidate = aiState.previewCandidateIndex !== null ? aiState.localAiCandidates[aiState.previewCandidateIndex] : null;
 
+  /**
+   * 处理复制组件 JSX 代码的函数
+   * 将当前组件的 JSX 代码复制到剪贴板
+   */
   const handleCopyComponentJSX = async () => {
     try {
       const snippet = generateComponentJSXSnippet(activeComponent, theme);

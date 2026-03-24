@@ -1,4 +1,7 @@
-// components/Toolbar/ImportConfirmModal.tsx
+/**
+ * 导入确认模态框组件
+ * 用于显示导入JSON文件的预览信息和确认操作
+ */
 import React from 'react';
 import { useForgeStore } from '@/store/forgeStore';
 import { ImportPreviewPayload } from '../hooks/useImportExport';

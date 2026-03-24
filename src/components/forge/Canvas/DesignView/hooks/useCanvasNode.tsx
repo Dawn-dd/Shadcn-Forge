@@ -1,3 +1,7 @@
+/**
+ * Canvas节点渲染钩子函数
+ * 用于处理画布上节点的渲染、拖拽、选择等交互逻辑
+ */
 import React from 'react';
 import { useForgeStore } from '@/store/forgeStore';
 import { COMPONENT_REGISTRY } from '@/config/components';
@@ -5,6 +9,7 @@ import { Theme, Layout, ComponentItem } from '@/types';
 import { getItemFrameStyle } from '../utils';
 import { ActiveToolbar } from '../components/ActiveToolbar';
 
+// 用于封装与 拖放 功能相关的处理逻辑和状态
 interface DndHandlers {
   handleItemDragStart: (e: React.DragEvent, id: string) => void;
   handleItemDragOver: (e: React.DragEvent, id: string, direction: Layout['direction']) => void;
@@ -19,6 +24,7 @@ interface ContextMenuHandlers {
   openContextMenu: (event: React.MouseEvent, id: string) => void;
 }
 
+// 封装了可视化编辑器中核心的组件渲染和交互逻辑。通过递归渲染、事件绑定和状态管理，实现了灵活的画布编辑功能。
 export const useCanvasNode = (dnd: DndHandlers, contextMenu: ContextMenuHandlers) => {
   const store = useForgeStore();
   const getCardChildren = (cardId: string) => store.canvasItems.filter((item) => item.parentId === cardId);

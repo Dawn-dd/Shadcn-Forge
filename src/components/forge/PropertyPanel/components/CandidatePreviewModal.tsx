@@ -1,9 +1,17 @@
+/**
+ * CandidatePreviewModal 组件
+ * 用于展示AI重构候选方案的预览模态框
+ * 支持方案预览和对比当前两种模式
+ */
 import { X, Loader2, Sparkles } from 'lucide-react';
 import { ComponentItem, Theme, Layout } from '@/types';
 import { LocalRewriteCandidate } from '../types';
 import { getPropDiffEntries, getCardStructureDiff, getCandidateDiffSummary, formatDiffValue, renderComponentPreview, renderLocalCandidatePreview } from '../utils';
 import { useLocalAIRewrite } from '../hooks/useLocalAIRewrite';
 
+/**
+ * 候选方案预览模态框的属性接口
+ */
 interface CandidatePreviewModalProps {
   activeComponent: ComponentItem;
   candidate: LocalRewriteCandidate;

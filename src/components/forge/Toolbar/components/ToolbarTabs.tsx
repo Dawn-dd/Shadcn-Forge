@@ -1,4 +1,3 @@
-// components/Toolbar/ToolbarTabs.tsx
 import React from 'react';
 import { MousePointer2, Terminal, Code2 } from 'lucide-react';
 import { TabButton } from '@/components/shared/TabButton';

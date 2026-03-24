@@ -1,12 +1,15 @@
-// components/Toolbar/useImportExport.ts
 import { useRef, useState } from 'react';
-import JSZip from 'jszip';
+import JSZip from 'jszip'; //  导入JSZip库，用于处理ZIP文件的创建和操作
 import { saveAs } from 'file-saver';
 import { useForgeStore } from '@/store/forgeStore';
 import { generateProjectStructure } from '@/lib/codeGenerator';
 import { ComponentItem } from '@/types';
 import { normalizeImportedItems } from '../utils';
 
+/**
+ * 导入预载荷接口定义
+ * 包含文件名、画布项目、主题和布局信息
+ */
 export interface ImportPreviewPayload {
   fileName: string;
   canvasItems: ComponentItem[];
@@ -14,10 +17,17 @@ export interface ImportPreviewPayload {
   layout?: Record<string, unknown>;
 }
 
+/**
+ * 导入导出功能自定义Hook
+ * @param setActiveTab - 设置活动标签页的函数
+ * @returns 返回导入导出相关的状态和操作函数
+ */
 export const useImportExport = (setActiveTab: (tab: 'design' | 'inspect' | 'export') => void) => {
   const { theme, layout, canvasItems, loadFromSnapshot } = useForgeStore();
   
+  // 引用文件输入元素
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  // 存储待导入的数据
   const [pendingImport, setPendingImport] = useState<ImportPreviewPayload | null>(null);
 
   // 导出 ZIP

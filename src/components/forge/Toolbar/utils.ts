@@ -1,4 +1,3 @@
-// components/Toolbar/utils.ts
 import { ComponentItem } from '@/types';
 import { generateId } from '@/lib/utils';
 import { COMPONENT_REGISTRY } from '@/config/components';

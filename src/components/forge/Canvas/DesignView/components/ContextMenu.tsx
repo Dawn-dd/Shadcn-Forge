@@ -1,3 +1,7 @@
+/**
+ * 右键菜单组件
+ * 用于显示和操作组件的上下文菜单，包括克隆、删除、移动等操作
+ */
 import React from 'react';
 import { useForgeStore } from '@/store/forgeStore';
 import { ContextMenuState } from '../utils';
@@ -7,6 +11,11 @@ interface ContextMenuProps {
   onClose: () => void;
 }
 
+/**
+ * 右键菜单组件的实现
+ * 提供组件的上下文操作功能，包括克隆、删除、移动等
+ * @param props 组件属性，包含菜单状态和关闭函数
+ */
 export const ContextMenu: React.FC<ContextMenuProps> = ({ contextMenu, onClose }) => {
   const { 
     canvasItems, duplicateComponent, removeSelectedComponents, 

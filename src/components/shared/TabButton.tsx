@@ -1,3 +1,7 @@
+/**
+ * TabButton 组件，用于创建一个可切换的标签按钮
+ * 支持图标和标签文本，并根据激活状态改变样式
+ */
 import React from 'react';
 
 interface TabButtonProps {
